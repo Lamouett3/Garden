@@ -92,16 +92,30 @@ function AppInner() {
   }
 
   // ---------- MOBILE & TABLETTE : barre de navigation en bas ----------
-  const pagePad = bp === 'tablet' ? '32px 24px 110px' : '24px 14px 96px'
+  const isTablet = bp === 'tablet'
+  const navH = isTablet ? 68 : 62
   return (
-    <div style={{ minHeight: '100vh', background: '#d9e3da', fontFamily: font.family, padding: pagePad }}>
-      <div style={{ maxWidth: bp === 'tablet' ? 680 : 460, margin: '0 auto' }}>
-        <header style={{ textAlign: 'center', marginBottom: bp === 'tablet' ? 24 : 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
-            <Logo size={bp === 'tablet' ? 38 : 32} />
-            <span style={{ fontSize: bp === 'tablet' ? 26 : 24, fontWeight: 700, color: colors.text.title }}>Pousse</span>
-          </div>
-        </header>
+    <div style={{
+      minHeight: '100vh', background: '#d9e3da', fontFamily: font.family,
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <header style={{
+        textAlign: 'center',
+        padding: isTablet ? '28px 24px 0' : '22px 14px 0',
+        marginBottom: isTablet ? 18 : 14,
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
+          <Logo size={isTablet ? 38 : 32} />
+          <span style={{ fontSize: isTablet ? 26 : 24, fontWeight: 700, color: colors.text.title }}>Pousse</span>
+        </div>
+      </header>
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        padding: isTablet ? '0 24px' : '0 14px',
+        paddingBottom: navH + 18,
+        maxWidth: isTablet ? 680 : 460, width: '100%', margin: '0 auto',
+      }}>
         <Screens tab={tab} setTab={setTab} bp={bp} />
       </div>
 

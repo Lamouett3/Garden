@@ -15,6 +15,7 @@ export function Screen({ children, bp = 'mobile', wide = false }) {
       <div style={{
         background: colors.green.surface, borderRadius: radius.card,
         padding: '20px 18px 22px', fontFamily: font.family, width: '100%',
+        flex: 1, display: 'flex', flexDirection: 'column',
       }}>
         {children}
       </div>

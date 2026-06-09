@@ -1,11 +1,12 @@
 import { colors, radius } from '../theme/tokens'
 import { Screen, StreakBadge, PrimaryButton } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
+import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { loggedDays, currentStreak, dayKey } from '../data/storage'
 
 export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
-  const { episodes } = useStore()
+  const { episodes, profile } = useStore()
   const days = loggedDays(episodes).size
   const streak = currentStreak(episodes)
   const today = dayKey(new Date())
@@ -43,6 +44,14 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           <span style={{ fontSize: 13, color: colors.green.primaryDark }}>Tu as deja pris soin de toi aujourd'hui.</span>
         </div>
       )}
+
+      {profile.planetsOn && (
+        <div style={{ marginBottom: 14 }}>
+          <PlanetaryWidget />
+        </div>
+      )}
+
+      <div style={{ flex: 1 }} />
 
       <div style={{ display: 'flex', flexDirection: wide ? 'row' : 'column', gap: 10 }}>
         <div style={{ flex: 1 }}>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { colors, radius } from '../theme/tokens'
 import { Screen, ScreenHeader, StreakBadge, Segmented } from '../components/ui'
+import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
 import { computeStats, buildSeries } from '../data/stats'
@@ -60,7 +61,7 @@ function StatCard({ label, value, suffix }) {
 }
 
 export default function Dashboard({ onLog, bp = 'mobile' }) {
-  const { episodes } = useStore()
+  const { episodes, profile } = useStore()
   const [view, setView] = useState('s')
   const wide = bp === 'desktop'
 
@@ -127,14 +128,23 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
       {wide ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24, alignItems: 'start' }}>
           <div>{chartBlock}</div>
-          <div>{statsBlock}</div>
+          <div>
+            {statsBlock}
+            {profile.planetsOn && (
+              <div style={{ marginTop: 14 }}><PlanetaryWidget compact /></div>
+            )}
+          </div>
         </div>
       ) : (
         <>
           <div style={{ marginBottom: 18 }}>{chartBlock}</div>
           {statsBlock}
+          {profile.planetsOn && (
+            <div style={{ marginTop: 14 }}><PlanetaryWidget compact /></div>
+          )}
         </>
       )}
+      <div style={{ flex: 1 }} />
     </Screen>
   )
 }

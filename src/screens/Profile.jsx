@@ -88,6 +88,8 @@ export default function Profile({ bp = 'mobile' }) {
         </div>
       </div>
 
+      <div style={{ flex: 1 }} />
+
       <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 6, marginBottom: 0 }}>
         Desactive par defaut {'\u00b7'} activable quand tu veux
       </p>

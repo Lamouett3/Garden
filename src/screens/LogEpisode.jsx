@@ -173,6 +173,8 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
         </div>
       )}
 
+      <div style={{ flex: 1 }} />
+
       <PrimaryButton icon="ti-check" onClick={handleSave}>Enregistrer</PrimaryButton>
       <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 11, marginBottom: 0 }}>
         {"Saisie rapide \u00b7 l'efficacite se note plus tard"}
