@@ -33,7 +33,7 @@ export default function Profile({ bp = 'mobile' }) {
         })}
       </div>
 
-      {profile.gender === 'f' && (
+      {(profile.gender === 'f' || profile.gender === 'n') && (
         <div style={{ background: colors.green.soft, borderRadius: radius.lg, padding: '15px 15px 16px', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: colors.text.title, display: 'flex', alignItems: 'center', gap: 7 }}>

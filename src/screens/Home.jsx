@@ -18,7 +18,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   const streak = currentStreak(episodes)
   const today = dayKey(new Date())
   const loggedToday = episodes.some((e) => dayKey(e.createdAt) === today)
-  const cyclePhase = profile.gender === 'f' ? getCyclePhase(profile) : null
+  const cyclePhase = (profile.gender === 'f' || profile.gender === 'n') ? getCyclePhase(profile) : null
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bel apres-midi' : 'Bonsoir'

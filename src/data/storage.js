@@ -2,16 +2,20 @@
 // Persistance des données — localStorage
 // MVP : tout reste sur l'appareil (pas de serveur).
 // Voir CLAUDE.md §9 pour la stratégie réglementaire.
+// Cles namespacees par compte (voir auth.js).
 // =============================================================
 
-const EPISODES_KEY = 'pousse.episodes.v1'
-const PROFILE_KEY = 'pousse.profile.v1'
+import { currentAccountId } from './auth'
+
+function ns() { return `pousse.${currentAccountId()}` }
+function episodesKey() { return `${ns()}.episodes.v1` }
+function profileKey() { return `${ns()}.profile.v1` }
 
 // ---- Épisodes ----
 
 export function loadEpisodes() {
   try {
-    const raw = localStorage.getItem(EPISODES_KEY)
+    const raw = localStorage.getItem(episodesKey())
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -23,7 +27,7 @@ export function saveEpisode(episode) {
   const withId = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...episode }
   episodes.push(withId)
   try {
-    localStorage.setItem(EPISODES_KEY, JSON.stringify(episodes))
+    localStorage.setItem(episodesKey(), JSON.stringify(episodes))
   } catch (e) {
     console.error('Échec de sauvegarde', e)
   }
@@ -33,7 +37,7 @@ export function saveEpisode(episode) {
 export function updateEpisode(id, patch) {
   const episodes = loadEpisodes().map((e) => (e.id === id ? { ...e, ...patch } : e))
   try {
-    localStorage.setItem(EPISODES_KEY, JSON.stringify(episodes))
+    localStorage.setItem(episodesKey(), JSON.stringify(episodes))
   } catch (e) {
     console.error('Échec de mise à jour', e)
   }
@@ -41,7 +45,7 @@ export function updateEpisode(id, patch) {
 
 export function deleteEpisode(id) {
   const episodes = loadEpisodes().filter((e) => e.id !== id)
-  localStorage.setItem(EPISODES_KEY, JSON.stringify(episodes))
+  localStorage.setItem(episodesKey(), JSON.stringify(episodes))
 }
 
 // ---- Profil ----
@@ -52,20 +56,28 @@ const DEFAULT_PROFILE = {
   cycleLength: 28,
   lastPeriod: '',
   planetsOn: false, // désactivé par défaut — cf. CLAUDE.md §3
+  gardenStartDate: null,
+  completedGardens: 0,
 }
 
 export function loadProfile() {
   try {
-    const raw = localStorage.getItem(PROFILE_KEY)
-    return raw ? { ...DEFAULT_PROFILE, ...JSON.parse(raw) } : DEFAULT_PROFILE
+    const raw = localStorage.getItem(profileKey())
+    const profile = raw ? { ...DEFAULT_PROFILE, ...JSON.parse(raw) } : { ...DEFAULT_PROFILE }
+    // Auto-init gardenStartDate au premier chargement
+    if (!profile.gardenStartDate) {
+      profile.gardenStartDate = dayKey(new Date())
+      saveProfile(profile)
+    }
+    return profile
   } catch {
-    return DEFAULT_PROFILE
+    return { ...DEFAULT_PROFILE }
   }
 }
 
 export function saveProfile(profile) {
   try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
+    localStorage.setItem(profileKey(), JSON.stringify(profile))
   } catch (e) {
     console.error('Échec de sauvegarde du profil', e)
   }
@@ -118,6 +130,19 @@ export function dayKey(date) {
 // Renvoie l'ensemble des jours (clé AAAA-MM-JJ) où au moins un épisode a été noté
 export function loggedDays(episodes) {
   return new Set(episodes.map((e) => dayKey(e.createdAt)))
+}
+
+/**
+ * Compte les jours distincts avec episode depuis gardenStartDate.
+ * Renvoie un Set de day keys.
+ */
+export function gardenLoggedDays(episodes, gardenStartDate) {
+  if (!gardenStartDate) return new Set()
+  return new Set(
+    episodes
+      .map((e) => dayKey(e.createdAt))
+      .filter((dk) => dk >= gardenStartDate)
+  )
 }
 
 // Calcule la série en cours (jours consécutifs avec au moins un signalement,
