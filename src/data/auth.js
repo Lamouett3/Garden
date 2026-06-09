@@ -138,6 +138,7 @@ export function migrateIfNeeded() {
 // ---- Compte test Marie ----
 
 const TEST_ID = 'test-marie'
+const SEED_VERSION = 2 // incrementer pour forcer un re-seed
 
 function dayKeyForSeed(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -150,16 +151,21 @@ function dayKeyForSeed(date) {
  */
 export function seedTestAccount() {
   const accounts = loadAccounts()
-  if (accounts.some((a) => a.id === TEST_ID)) return
+  const versionKey = `pousse.${TEST_ID}.seed.v`
+  const currentV = localStorage.getItem(versionKey)
 
+  if (currentV === String(SEED_VERSION)) return
+
+  // Supprimer l'ancien compte test si present
+  const cleaned = accounts.filter((a) => a.id !== TEST_ID)
   const account = {
     id: TEST_ID,
     name: 'Marie',
     password: 'test',
     createdAt: new Date().toISOString(),
   }
-  accounts.push(account)
-  saveAccounts(accounts)
+  cleaned.push(account)
+  saveAccounts(cleaned)
 
   const now = new Date()
   const gardenStart = new Date(now)
@@ -211,6 +217,7 @@ export function seedTestAccount() {
   try {
     localStorage.setItem(`pousse.${TEST_ID}.episodes.v1`, JSON.stringify(episodes))
     localStorage.setItem(`pousse.${TEST_ID}.profile.v1`, JSON.stringify(profile))
+    localStorage.setItem(versionKey, String(SEED_VERSION))
   } catch (e) {
     console.error('Echec du seed compte test', e)
   }

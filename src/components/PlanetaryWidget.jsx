@@ -4,12 +4,12 @@ import { getPlanetPositions, getMoonPhase, getMoonPhaseName } from '../data/astr
 
 // Couleurs des planetes — palette jardin enrichie
 const PLANET_STYLE = {
-  mercure:  { color: '#B8AFA0', r: 2.5, label: 'Mercure' },
-  venus:    { color: colors.amber.border, r: 3.2, label: 'Venus' },
-  terre:    { color: colors.green.primary, r: 4, label: 'Terre' },
-  mars:     { color: colors.coral.barStrong, r: 3, label: 'Mars' },
-  jupiter:  { color: colors.amber.text, r: 5.5, label: 'Jupiter' },
-  saturne:  { color: '#C4B17C', r: 4.5, label: 'Saturne' },
+  mercure:  { color: '#B8AFA0', r: 2.5, label: 'Mercure', spin: '8s' },
+  venus:    { color: colors.amber.border, r: 3.2, label: 'Venus', spin: '12s' },
+  terre:    { color: colors.green.primary, r: 4, label: 'Terre', spin: '10s' },
+  mars:     { color: colors.coral.barStrong, r: 3, label: 'Mars', spin: '11s' },
+  jupiter:  { color: colors.amber.text, r: 5.5, label: 'Jupiter', spin: '6s' },
+  saturne:  { color: '#C4B17C', r: 4.5, label: 'Saturne', spin: '7s' },
 }
 
 // Rayons d'orbite comprimes pour le SVG 240x240
@@ -21,6 +21,16 @@ const ORBIT_R = {
   mars: 72,
   jupiter: 90,
   saturne: 108,
+}
+
+// Vitesses orbitales (animation dash) — plus proche = plus rapide
+const ORBIT_SPEED = {
+  mercure: '4s',
+  venus: '6s',
+  terre: '8s',
+  mars: '12s',
+  jupiter: '20s',
+  saturne: '30s',
 }
 
 // 8 phases pour le bandeau visuel
@@ -42,15 +52,15 @@ function planetXY(angle, orbitR) {
   return { x: CX + orbitR * Math.cos(rad), y: CY + orbitR * Math.sin(rad) }
 }
 
-// Palette lune adaptee a la DA jardin (tons chauds sur fond clair)
+// Palette lune adaptee a la DA jardin
 const MOON = {
-  dark: '#5A6B5E',       // partie sombre — vert fonce muted
-  light: '#FFFDE7',      // partie eclairee — blanc chaud
-  rim: '#C4B17C',        // contour dore
-  glowColor: colors.amber.border, // halo dore chaud
+  dark: '#5A6B5E',
+  light: '#FFFDE7',
+  rim: '#C4B17C',
+  glowColor: colors.amber.border,
 }
 
-/** Icone SVG de phase lunaire — rendu sur fond clair jardin */
+/** Icone SVG de phase lunaire */
 function MoonIcon({ phase, cx, cy, r, glow = false }) {
   const illumination = phase <= 0.5 ? phase * 2 : (1 - phase) * 2
   const waxing = phase <= 0.5
@@ -98,7 +108,7 @@ function MoonIcon({ phase, cx, cy, r, glow = false }) {
   )
 }
 
-/** Mini lune pour le bandeau de phases (fond clair) */
+/** Mini lune pour le bandeau */
 function MiniMoon({ phase, cx, cy, r }) {
   const illumination = phase <= 0.5 ? phase * 2 : (1 - phase) * 2
   const waxing = phase <= 0.5
@@ -123,6 +133,119 @@ function MiniMoon({ phase, cx, cy, r }) {
   )
 }
 
+/** Planete animee avec rotation sur son axe et details de surface */
+function AnimatedPlanet({ id, x, y }) {
+  const style = PLANET_STYLE[id]
+  const r = style.r
+
+  // Jupiter : bandes horizontales qui tournent
+  if (id === 'jupiter') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={r} fill={style.color} />
+        <clipPath id="clip-jupiter"><circle cx={x} cy={y} r={r - 0.3} /></clipPath>
+        <g clipPath="url(#clip-jupiter)">
+          <line x1={x - r} y1={y - 2} x2={x + r} y2={y - 2} stroke="#C4863A" strokeWidth="1" opacity="0.4">
+            <animate attributeName="y1" values={`${y - 2};${y - 1};${y - 2}`} dur={style.spin} repeatCount="indefinite" />
+            <animate attributeName="y2" values={`${y - 2};${y - 1};${y - 2}`} dur={style.spin} repeatCount="indefinite" />
+          </line>
+          <line x1={x - r} y1={y + 1.5} x2={x + r} y2={y + 1.5} stroke="#D4A05A" strokeWidth="0.7" opacity="0.35">
+            <animate attributeName="y1" values={`${y + 1.5};${y + 2.5};${y + 1.5}`} dur={style.spin} repeatCount="indefinite" />
+            <animate attributeName="y2" values={`${y + 1.5};${y + 2.5};${y + 1.5}`} dur={style.spin} repeatCount="indefinite" />
+          </line>
+        </g>
+      </g>
+    )
+  }
+
+  // Saturne : rotation de l'anneau
+  if (id === 'saturne') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={r} fill={style.color} />
+        <ellipse cx={x} cy={y} rx={r + 3} ry={r * 0.35}
+          fill="none" stroke={style.color} strokeWidth="0.8" opacity="0.6">
+          <animateTransform attributeName="transform" type="rotate"
+            values={`-20 ${x} ${y}; -18 ${x} ${y}; -20 ${x} ${y}`}
+            dur="8s" repeatCount="indefinite" />
+        </ellipse>
+        {/* Petit reflet anime */}
+        <circle cx={x - r * 0.3} cy={y - r * 0.3} r={r * 0.25} fill="#fff" opacity="0.15">
+          <animate attributeName="opacity" values="0.15;0.25;0.15" dur="4s" repeatCount="indefinite" />
+        </circle>
+      </g>
+    )
+  }
+
+  // Terre : continents qui tournent + halo
+  if (id === 'terre') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={r + 6} fill="url(#earthGlow)" />
+        <circle cx={x} cy={y} r={r} fill={colors.green.primary} />
+        <clipPath id="clip-terre"><circle cx={x} cy={y} r={r - 0.3} /></clipPath>
+        <g clipPath="url(#clip-terre)">
+          {/* Tache continent qui tourne */}
+          <ellipse cx={x - 1} cy={y - 0.5} rx={1.8} ry={1.2} fill={colors.green.primaryDark} opacity="0.4">
+            <animateTransform attributeName="transform" type="rotate"
+              from={`0 ${x} ${y}`} to={`360 ${x} ${y}`}
+              dur={style.spin} repeatCount="indefinite" />
+          </ellipse>
+          <ellipse cx={x + 1.5} cy={y + 1} rx={1.2} ry={0.8} fill={colors.green.primaryDark} opacity="0.3">
+            <animateTransform attributeName="transform" type="rotate"
+              from={`0 ${x} ${y}`} to={`360 ${x} ${y}`}
+              dur={style.spin} repeatCount="indefinite" />
+          </ellipse>
+        </g>
+        <circle cx={x} cy={y} r={r} fill="none" stroke={colors.green.leaf} strokeWidth="1.2" opacity="0.5" />
+      </g>
+    )
+  }
+
+  // Mars : tache polaire qui tourne
+  if (id === 'mars') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={r} fill={style.color} />
+        <clipPath id="clip-mars"><circle cx={x} cy={y} r={r - 0.2} /></clipPath>
+        <g clipPath="url(#clip-mars)">
+          <circle cx={x + 0.5} cy={y - r * 0.5} r={0.8} fill="#E8A080" opacity="0.5">
+            <animateTransform attributeName="transform" type="rotate"
+              from={`0 ${x} ${y}`} to={`360 ${x} ${y}`}
+              dur={style.spin} repeatCount="indefinite" />
+          </circle>
+        </g>
+      </g>
+    )
+  }
+
+  // Venus : reflet brillant qui tourne
+  if (id === 'venus') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={r} fill={style.color} />
+        <circle cx={x - r * 0.25} cy={y - r * 0.25} r={r * 0.3} fill="#fff" opacity="0.2">
+          <animateTransform attributeName="transform" type="rotate"
+            from={`0 ${x} ${y}`} to={`360 ${x} ${y}`}
+            dur={style.spin} repeatCount="indefinite" />
+        </circle>
+      </g>
+    )
+  }
+
+  // Mercure : subtil reflet
+  return (
+    <g>
+      <circle cx={x} cy={y} r={r} fill={style.color} />
+      <circle cx={x - r * 0.2} cy={y - r * 0.3} r={r * 0.2} fill="#fff" opacity="0.15">
+        <animateTransform attributeName="transform" type="rotate"
+          from={`0 ${x} ${y}`} to={`360 ${x} ${y}`}
+          dur={style.spin} repeatCount="indefinite" />
+      </circle>
+    </g>
+  )
+}
+
 /** Bandeau visuel des 8 phases — palette jardin */
 function MoonPhaseStrip({ moonPhase, moonInfo }) {
   const waxing = moonPhase <= 0.5
@@ -136,7 +259,6 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
       padding: '14px 16px 12px', marginTop: 10,
       border: `1px solid ${colors.border.soft}`,
     }}>
-      {/* Titre + direction */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 12,
@@ -162,16 +284,12 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
         </div>
       </div>
 
-      {/* Bandeau des 8 phases */}
       <div style={{ position: 'relative', padding: '0 4px' }}>
         <svg viewBox="0 0 280 34" style={{ width: '100%', display: 'block' }}>
-          {/* Ligne de progression */}
           <line x1="10" y1="17" x2="270" y2="17" stroke={colors.border.soft} strokeWidth="2" strokeLinecap="round" />
-          {/* Portion parcourue */}
           <line x1="10" y1="17" x2={10 + (cursorPct / 100) * 260} y2="17"
             stroke={colors.green.leafLight} strokeWidth="2" strokeLinecap="round" />
 
-          {/* 8 icones de phase */}
           {PHASE_ICONS.map((p, i) => {
             const px = 10 + (i / 7) * 260
             const dist = Math.abs(moonPhase - p.phase)
@@ -180,21 +298,18 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
             const opacity = isCurrent ? 1 : 0.5
             return (
               <g key={i} opacity={opacity}>
-                {/* Fond blanc sous chaque lune pour la lisibilite */}
                 <circle cx={px} cy={17} r={moonR + 1.5} fill={colors.sand.bg} />
                 <MiniMoon phase={p.phase} cx={px} cy={17} r={moonR} />
               </g>
             )
           })}
 
-          {/* Curseur anime — position actuelle */}
           <circle cx={10 + (cursorPct / 100) * 260} cy={17} r="11" fill="none"
             stroke={colors.green.leaf} strokeWidth="1.5" opacity="0.5">
             <animate attributeName="opacity" values="0.4;0.75;0.4" dur="2.5s" repeatCount="indefinite" />
             <animate attributeName="r" values="11;12.5;11" dur="2.5s" repeatCount="indefinite" />
           </circle>
 
-          {/* Fleche de direction */}
           {waxing ? (
             <polygon
               points={`${10 + (cursorPct / 100) * 260 + 15},17 ${10 + (cursorPct / 100) * 260 + 11},14 ${10 + (cursorPct / 100) * 260 + 11},20`}
@@ -210,7 +325,6 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
           )}
         </svg>
 
-        {/* Labels dessous */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
           fontSize: 9, color: colors.sand.text, marginTop: 4, padding: '0 2px',
@@ -258,52 +372,62 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
           </radialGradient>
         </defs>
 
-        {/* Orbites */}
-        {Object.entries(ORBIT_R).map(([id, r]) => (
-          <circle key={id} cx={CX} cy={CY} r={r} fill="none"
-            stroke={id === 'terre' ? colors.green.leafLight : colors.border.soft}
-            strokeWidth={id === 'terre' ? '0.8' : '0.4'} strokeDasharray="3 4" opacity="0.7" />
-        ))}
-
-        {/* Soleil avec pulse */}
-        <circle cx={CX} cy={CY} r="12" fill={colors.amber.bg} opacity="0.2">
-          <animate attributeName="r" values="12;14;12" dur="4s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.2;0.3;0.2" dur="4s" repeatCount="indefinite" />
-        </circle>
-        <circle cx={CX} cy={CY} r="8" fill="url(#sunGlow)" />
-        <circle cx={CX} cy={CY} r="5" fill={colors.amber.bg} />
-
-        {/* Planetes (sauf Terre) */}
-        {planets.filter((p) => p.id !== 'terre').map((p) => {
-          const style = PLANET_STYLE[p.id]
-          const orbit = ORBIT_R[p.id]
-          const { x, y } = planetXY(p.angle, orbit)
+        {/* Orbites avec animation de dash tournant */}
+        {Object.entries(ORBIT_R).map(([id, r]) => {
+          const circumference = 2 * Math.PI * r
+          const dashLen = circumference / 12
+          const isTerre = id === 'terre'
           return (
-            <g key={p.id}>
-              <circle cx={x} cy={y} r={style.r} fill={style.color} />
-              {p.id === 'saturne' && (
-                <ellipse cx={x} cy={y} rx={style.r + 3} ry={style.r * 0.35}
-                  fill="none" stroke={style.color} strokeWidth="0.8" opacity="0.6"
-                  transform={`rotate(-20 ${x} ${y})`} />
-              )}
-            </g>
+            <circle key={id} cx={CX} cy={CY} r={r} fill="none"
+              stroke={isTerre ? colors.green.leafLight : colors.border.soft}
+              strokeWidth={isTerre ? '0.8' : '0.4'}
+              strokeDasharray={`${dashLen} ${dashLen * 0.8}`}
+              opacity="0.7">
+              <animateTransform attributeName="transform" type="rotate"
+                from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`}
+                dur={ORBIT_SPEED[id]} repeatCount="indefinite" />
+            </circle>
           )
         })}
 
-        {/* Terre */}
+        {/* Soleil avec pulse + rayons */}
+        <circle cx={CX} cy={CY} r="14" fill={colors.amber.bg} opacity="0.12">
+          <animate attributeName="r" values="14;16;14" dur="4s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.12;0.2;0.12" dur="4s" repeatCount="indefinite" />
+        </circle>
+        <circle cx={CX} cy={CY} r="8" fill="url(#sunGlow)" />
+        <circle cx={CX} cy={CY} r="5" fill={colors.amber.bg} />
+        {/* Petits rayons animés */}
+        {[0, 60, 120, 180, 240, 300].map((a) => {
+          const rad = toRad(a)
+          return (
+            <line key={a}
+              x1={CX + 9 * Math.cos(rad)} y1={CY + 9 * Math.sin(rad)}
+              x2={CX + 12 * Math.cos(rad)} y2={CY + 12 * Math.sin(rad)}
+              stroke={colors.amber.border} strokeWidth="0.6" strokeLinecap="round" opacity="0.3">
+              <animate attributeName="opacity" values="0.3;0.5;0.3" dur="3s" begin={`${a / 360}s`} repeatCount="indefinite" />
+            </line>
+          )
+        })}
+
+        {/* Planetes animees (sauf Terre, dessinee via AnimatedPlanet) */}
+        {planets.filter((p) => p.id !== 'terre').map((p) => {
+          const orbit = ORBIT_R[p.id]
+          const { x, y } = planetXY(p.angle, orbit)
+          return <AnimatedPlanet key={p.id} id={p.id} x={x} y={y} />
+        })}
+
+        {/* Terre animee */}
         {terrePos && (
           <g>
-            <circle cx={terrePos.x} cy={terrePos.y} r="10" fill="url(#earthGlow)" />
-            <circle cx={terrePos.x} cy={terrePos.y} r={PLANET_STYLE.terre.r} fill={colors.green.primary} />
-            <circle cx={terrePos.x} cy={terrePos.y} r={PLANET_STYLE.terre.r} fill="none"
-              stroke={colors.green.leaf} strokeWidth="1.2" opacity="0.5" />
-            <text x={terrePos.x} y={terrePos.y - PLANET_STYLE.terre.r - 4}
+            <AnimatedPlanet id="terre" x={terrePos.x} y={terrePos.y} />
+            <text x={terrePos.x} y={terrePos.y - PLANET_STYLE.terre.r - 5}
               textAnchor="middle" fontSize="7" fill={colors.green.primaryDark}
               fontFamily="Nunito, sans-serif" fontWeight="600">Terre</text>
           </g>
         )}
 
-        {/* Lune avec halo anime */}
+        {/* Lune avec halo */}
         {terrePos && moonPos && (
           <g>
             <circle cx={terrePos.x} cy={terrePos.y} r="10" fill="none"
@@ -327,7 +451,6 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
         ))}
       </div>
 
-      {/* Bandeau de phases lunaires */}
       <MoonPhaseStrip moonPhase={moonPhase} moonInfo={moonInfo} />
     </div>
   )
@@ -370,7 +493,6 @@ function CompactWidget({ planets, moonPhase, moonInfo }) {
         </div>
       </div>
 
-      {/* Mini strip compact */}
       <div style={{ marginTop: 8, position: 'relative' }}>
         <svg viewBox="0 0 200 16" style={{ width: '100%', display: 'block' }}>
           <line x1="4" y1="8" x2="196" y2="8" stroke={colors.border.soft} strokeWidth="1.5" strokeLinecap="round" />
@@ -397,10 +519,6 @@ function CompactWidget({ planets, moonPhase, moonInfo }) {
   )
 }
 
-/**
- * Widget planetaire — affiche les positions du systeme solaire et la phase lunaire.
- * @param {boolean} compact — mode compact (bandeau) au lieu du schema complet
- */
 export default function PlanetaryWidget({ compact = false }) {
   const [data, setData] = useState(() => compute())
 
