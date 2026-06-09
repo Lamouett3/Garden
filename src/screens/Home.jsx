@@ -3,7 +3,7 @@ import { Screen, StreakBadge, PrimaryButton } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
-import { loggedDays, currentStreak, dayKey, getCyclePhase } from '../data/storage'
+import { gardenLoggedDays, currentStreak, dayKey, getCyclePhase } from '../data/storage'
 
 const CYCLE_COLORS = {
   pink: { bg: '#FDF0F3', text: '#9A3D5E', accent: '#D4537E' },
@@ -12,9 +12,13 @@ const CYCLE_COLORS = {
   sand: { bg: colors.sand.bg, text: colors.sand.text, accent: colors.sand.faint },
 }
 
+const GARDEN_GOAL = 14
+
 export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
-  const { episodes, profile } = useStore()
-  const days = loggedDays(episodes).size
+  const { episodes, profile, updateProfile } = useStore()
+  const gardenDays = gardenLoggedDays(episodes, profile.gardenStartDate)
+  const gardenDayCount = gardenDays.size
+  const gardenComplete = gardenDayCount >= GARDEN_GOAL
   const streak = currentStreak(episodes)
   const today = dayKey(new Date())
   const loggedToday = episodes.some((e) => dayKey(e.createdAt) === today)
@@ -24,6 +28,13 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bel apres-midi' : 'Bonsoir'
   const wide = bp === 'desktop'
 
+  function handleHarvest() {
+    updateProfile({
+      completedGardens: (profile.completedGardens || 0) + 1,
+      gardenStartDate: today,
+    })
+  }
+
   return (
     <Screen bp={bp} wide={wide}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -31,19 +42,54 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           <div style={{ fontSize: 13, color: colors.text.soft }}>{greeting}</div>
           <div style={{ fontSize: wide ? 24 : 19, fontWeight: 700, color: colors.text.title }}>Ton jardin</div>
         </div>
-        <StreakBadge>{streak} j</StreakBadge>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(profile.completedGardens || 0) > 0 && (
+            <StreakBadge icon="ti-trophy">{profile.completedGardens} recolte{profile.completedGardens > 1 ? 's' : ''}</StreakBadge>
+          )}
+          <StreakBadge>{streak} j</StreakBadge>
+        </div>
       </div>
+
+      {/* Carte de celebration quand le jardin est complet */}
+      {gardenComplete && (
+        <div style={{
+          background: colors.amber.bg, borderRadius: radius.lg,
+          padding: '18px 16px', marginBottom: 14, textAlign: 'center',
+          border: `1.5px solid ${colors.amber.border}`,
+        }}>
+          <div style={{ fontSize: 20, marginBottom: 6 }}>
+            <i className="ti ti-confetti" style={{ color: colors.amber.text, fontSize: 24 }} aria-hidden="true" />
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: colors.amber.text, marginBottom: 4 }}>
+            Ton jardin est en fleurs !
+          </div>
+          <div style={{ fontSize: 12, color: colors.amber.text, opacity: 0.8, marginBottom: 14 }}>
+            {GARDEN_GOAL} jours de suivi, bravo pour ta regularite
+          </div>
+          <button onClick={handleHarvest}
+            style={{
+              border: 'none', background: colors.amber.border, color: '#fff',
+              padding: '10px 22px', borderRadius: radius.md, fontSize: 14,
+              fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+            }}>
+            <i className="ti ti-plant" aria-hidden="true" /> Recolter et replanter
+          </button>
+        </div>
+      )}
 
       <div style={{
         background: colors.green.bg, borderRadius: radius.lg,
         padding: wide ? '28px 24px 16px' : '16px 8px 6px', marginBottom: 8,
       }}>
-        <GrowingGarden days={days} />
+        <GrowingGarden days={gardenDayCount} />
       </div>
       <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginBottom: 18 }}>
-        {days === 0
+        {gardenDayCount === 0
           ? 'Note un premier episode pour planter ta premiere pousse'
-          : `${days} jour${days > 1 ? 's' : ''} suivi${days > 1 ? 's' : ''} \u00b7 ton jardin pousse`}
+          : gardenComplete
+            ? 'Ton jardin est magnifique !'
+            : `${gardenDayCount}/${GARDEN_GOAL} jours dans ce cycle`}
       </div>
 
       {cyclePhase && (
@@ -94,6 +140,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
             flex: 1, border: `1.5px solid ${colors.border.soft}`,
             background: 'transparent', color: colors.text.muted, padding: 13, borderRadius: radius.lg,
             fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: 'pointer',
+            fontFamily: 'inherit',
           }}>
           <i className="ti ti-chart-bar" aria-hidden="true" /> Voir mon historique
         </button>

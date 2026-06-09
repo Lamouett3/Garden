@@ -2,7 +2,7 @@ import { colors, radius } from '../theme/tokens'
 import { Screen, ScreenHeader, Toggle } from '../components/ui'
 import { useStore } from '../data/store'
 
-export default function Profile({ bp = 'mobile' }) {
+export default function Profile({ bp = 'mobile', onLogout }) {
   const { profile, updateProfile } = useStore()
 
   const genders = [
@@ -90,9 +90,21 @@ export default function Profile({ bp = 'mobile' }) {
 
       <div style={{ flex: 1 }} />
 
-      <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 6, marginBottom: 0 }}>
+      <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 6, marginBottom: 16 }}>
         Desactive par defaut {'\u00b7'} activable quand tu veux
       </p>
+
+      {onLogout && (
+        <button onClick={onLogout}
+          style={{
+            width: '100%', border: `1.5px solid ${colors.border.soft}`,
+            background: 'transparent', color: colors.text.muted, padding: 13,
+            borderRadius: radius.lg, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          }}>
+          <i className="ti ti-logout" aria-hidden="true" /> Se deconnecter
+        </button>
+      )}
     </Screen>
   )
 }

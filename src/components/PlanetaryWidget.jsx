@@ -180,7 +180,12 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
         <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-label={moonInfo.label}>
           <MoonIcon phase={moonPhase} cx={12} cy={12} r={10} />
         </svg>
-        <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
+        <div>
+          <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
+          {moonInfo.description && (
+            <div style={{ fontSize: 11, color: colors.text.soft, fontStyle: 'italic' }}>{moonInfo.description}</div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -194,7 +199,12 @@ function CompactWidget({ planets, moonPhase, moonInfo }) {
         <svg width="22" height="22" viewBox="0 0 22 22" role="img" aria-label={moonInfo.label}>
           <MoonIcon phase={moonPhase} cx={11} cy={11} r={9.5} />
         </svg>
-        <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
+        <div>
+          <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
+          {moonInfo.description && (
+            <div style={{ fontSize: 11, color: colors.text.soft, fontStyle: 'italic' }}>{moonInfo.description}</div>
+          )}
+        </div>
       </div>
       <div style={{ width: 1, height: 16, background: colors.border.soft }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

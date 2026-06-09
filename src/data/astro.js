@@ -49,15 +49,15 @@ export function getMoonPhase(date = new Date()) {
 }
 
 const PHASE_NAMES = [
-  { max: 0.0375, label: 'Nouvelle lune',        icon: 'new'            },
-  { max: 0.2125, label: 'Premier croissant',     icon: 'waxing-crescent' },
-  { max: 0.2875, label: 'Premier quartier',      icon: 'first-quarter'  },
-  { max: 0.4625, label: 'Gibbeuse croissante',   icon: 'waxing-gibbous' },
-  { max: 0.5375, label: 'Pleine lune',           icon: 'full'           },
-  { max: 0.7125, label: 'Gibbeuse decroissante', icon: 'waning-gibbous' },
-  { max: 0.7875, label: 'Dernier quartier',      icon: 'last-quarter'   },
-  { max: 0.9625, label: 'Dernier croissant',     icon: 'waning-crescent'},
-  { max: 1.0,    label: 'Nouvelle lune',         icon: 'new'            },
+  { max: 0.0375, label: 'Nouvelle lune',        icon: 'new',             description: 'Temps de repos et d\'intentions' },
+  { max: 0.2125, label: 'Premier croissant',     icon: 'waxing-crescent', description: 'Energie de lancement et de nouveaux departs' },
+  { max: 0.2875, label: 'Premier quartier',      icon: 'first-quarter',   description: 'Moment de decisions et d\'action' },
+  { max: 0.4625, label: 'Gibbeuse croissante',   icon: 'waxing-gibbous',  description: 'Affiner, ajuster, perseverer' },
+  { max: 0.5375, label: 'Pleine lune',           icon: 'full',            description: 'Energie d\'accomplissement et de celebration' },
+  { max: 0.7125, label: 'Gibbeuse decroissante', icon: 'waning-gibbous',  description: 'Gratitude et partage' },
+  { max: 0.7875, label: 'Dernier quartier',      icon: 'last-quarter',    description: 'Lacher prise et bilan' },
+  { max: 0.9625, label: 'Dernier croissant',     icon: 'waning-crescent', description: 'Repos, introspection, preparation' },
+  { max: 1.0,    label: 'Nouvelle lune',         icon: 'new',             description: 'Temps de repos et d\'intentions' },
 ]
 
 /**
@@ -66,7 +66,7 @@ const PHASE_NAMES = [
 export function getMoonPhaseName(date = new Date()) {
   const p = getMoonPhase(date)
   for (const entry of PHASE_NAMES) {
-    if (p <= entry.max) return { label: entry.label, icon: entry.icon }
+    if (p <= entry.max) return { label: entry.label, icon: entry.icon, description: entry.description }
   }
-  return PHASE_NAMES[0]
+  return { label: PHASE_NAMES[0].label, icon: PHASE_NAMES[0].icon, description: PHASE_NAMES[0].description }
 }

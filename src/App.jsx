@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { colors, font } from './theme/tokens'
 import { StoreProvider } from './data/store'
 import { useBreakpoint } from './theme/useBreakpoint'
+import { getSession, logout, migrateIfNeeded, seedTestAccount, currentAccountName } from './data/auth'
+import Auth from './screens/Auth'
 import Home from './screens/Home'
 import Dashboard from './screens/Dashboard'
 import LogEpisode from './screens/LogEpisode'
@@ -30,21 +32,19 @@ function Logo({ size = 34 }) {
   )
 }
 
-function Screens({ tab, setTab, bp }) {
-  // le rapport est large par nature ; les autres écrans restent en colonne lisible
+function Screens({ tab, setTab, bp, onLogout }) {
   switch (tab) {
     case 'home': return <Home bp={bp} onLog={() => setTab('log')} onSeeHistory={() => setTab('dashboard')} />
     case 'dashboard': return <Dashboard bp={bp} onLog={() => setTab('log')} />
     case 'log': return <LogEpisode bp={bp} onBack={() => setTab('home')} onSaved={() => setTab('home')} />
     case 'report': return <MedicalReport bp={bp} />
-    case 'profile': return <Profile bp={bp} />
+    case 'profile': return <Profile bp={bp} onLogout={onLogout} />
     default: return null
   }
 }
 
-function AppInner() {
+function AppInner({ bp, isDesktop, accountName, onLogout }) {
   const [tab, setTab] = useState('home')
-  const { bp, isDesktop } = useBreakpoint()
 
   // ---------- DESKTOP : navigation latérale ----------
   if (isDesktop) {
@@ -59,6 +59,15 @@ function AppInner() {
             <Logo size={36} />
             <span style={{ fontSize: 22, fontWeight: 700, color: colors.text.title }}>Pousse</span>
           </div>
+          {accountName && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 16,
+              background: colors.green.soft, borderRadius: 10, fontSize: 13, color: colors.text.muted,
+            }}>
+              <i className="ti ti-user" style={{ fontSize: 15 }} aria-hidden="true" />
+              {accountName}
+            </div>
+          )}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {TABS.map((t) => {
               const active = tab === t.id
@@ -70,6 +79,7 @@ function AppInner() {
                     background: active ? colors.green.soft : 'transparent',
                     color: active ? colors.green.primaryDark : colors.text.muted,
                     fontWeight: active ? 600 : 400, fontSize: 14, textAlign: 'left',
+                    fontFamily: 'inherit',
                   }}>
                   <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
                   {t.label}
@@ -78,13 +88,13 @@ function AppInner() {
             })}
           </nav>
           <div style={{ marginTop: 'auto', padding: '0 8px', fontSize: 11, color: colors.text.faint }}>
-            Tes données restent sur cet appareil.
+            Tes donnees restent sur cet appareil.
           </div>
         </aside>
 
         <main style={{ flex: 1, padding: '40px 32px', overflowY: 'auto' }}>
           <div style={{ maxWidth: 820, margin: '0 auto' }}>
-            <Screens tab={tab} setTab={setTab} bp={bp} />
+            <Screens tab={tab} setTab={setTab} bp={bp} onLogout={onLogout} />
           </div>
         </main>
       </div>
@@ -109,6 +119,9 @@ function AppInner() {
           <Logo size={isTablet ? 38 : 32} />
           <span style={{ fontSize: isTablet ? 26 : 24, fontWeight: 700, color: colors.text.title }}>Pousse</span>
         </div>
+        {accountName && (
+          <div style={{ fontSize: 12, color: colors.text.soft, marginTop: 4 }}>{accountName}</div>
+        )}
       </header>
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
@@ -116,7 +129,7 @@ function AppInner() {
         paddingBottom: navH + 18,
         maxWidth: isTablet ? 680 : 460, width: '100%', margin: '0 auto',
       }}>
-        <Screens tab={tab} setTab={setTab} bp={bp} />
+        <Screens tab={tab} setTab={setTab} bp={bp} onLogout={onLogout} />
       </div>
 
       <nav className="no-print" style={{
@@ -134,6 +147,7 @@ function AppInner() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                   color: active ? colors.green.primary : colors.text.soft,
                   fontWeight: active ? 600 : 400, fontSize: 11, padding: '6px 0',
+                  fontFamily: 'inherit',
                 }}>
                 <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
                 {t.label}
@@ -147,9 +161,25 @@ function AppInner() {
 }
 
 export default function App() {
+  const [session, setSession] = useState(() => {
+    migrateIfNeeded()
+    seedTestAccount()
+    return getSession()
+  })
+  const { bp, isDesktop } = useBreakpoint()
+
+  if (!session) {
+    return <Auth bp={bp} onAuthenticated={() => setSession(getSession())} />
+  }
+
   return (
-    <StoreProvider>
-      <AppInner />
+    <StoreProvider key={session.accountId}>
+      <AppInner
+        bp={bp}
+        isDesktop={isDesktop}
+        accountName={currentAccountName()}
+        onLogout={() => { logout(); setSession(null) }}
+      />
     </StoreProvider>
   )
 }
