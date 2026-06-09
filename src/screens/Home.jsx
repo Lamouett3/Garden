@@ -3,7 +3,14 @@ import { Screen, StreakBadge, PrimaryButton } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
-import { loggedDays, currentStreak, dayKey } from '../data/storage'
+import { loggedDays, currentStreak, dayKey, getCyclePhase } from '../data/storage'
+
+const CYCLE_COLORS = {
+  pink: { bg: '#FDF0F3', text: '#9A3D5E', accent: '#D4537E' },
+  green: { bg: colors.green.soft, text: colors.green.primaryDark, accent: colors.green.primary },
+  amber: { bg: colors.amber.bg, text: colors.amber.text, accent: colors.amber.border },
+  sand: { bg: colors.sand.bg, text: colors.sand.text, accent: colors.sand.faint },
+}
 
 export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   const { episodes, profile } = useStore()
@@ -11,6 +18,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   const streak = currentStreak(episodes)
   const today = dayKey(new Date())
   const loggedToday = episodes.some((e) => dayKey(e.createdAt) === today)
+  const cyclePhase = profile.gender === 'f' ? getCyclePhase(profile) : null
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bel apres-midi' : 'Bonsoir'
@@ -37,6 +45,30 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           ? 'Note un premier episode pour planter ta premiere pousse'
           : `${days} jour${days > 1 ? 's' : ''} suivi${days > 1 ? 's' : ''} \u00b7 ton jardin pousse`}
       </div>
+
+      {cyclePhase && (
+        <div style={{
+          background: CYCLE_COLORS[cyclePhase.color].bg, borderRadius: radius.md,
+          padding: '11px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            background: CYCLE_COLORS[cyclePhase.color].accent,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.9,
+          }}>
+            <i className={`ti ${cyclePhase.icon}`}
+              style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: CYCLE_COLORS[cyclePhase.color].text }}>
+              Phase {cyclePhase.label.toLowerCase()}
+            </div>
+            <div style={{ fontSize: 11, color: CYCLE_COLORS[cyclePhase.color].text, opacity: 0.7 }}>
+              Jour {cyclePhase.day}/{cyclePhase.total} du cycle
+            </div>
+          </div>
+        </div>
+      )}
 
       {loggedToday && (
         <div style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', marginBottom: 12, display: 'flex', gap: 9, alignItems: 'center' }}>

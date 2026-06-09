@@ -42,6 +42,17 @@ export const conditions = {
 
 export const conditionKeys = Object.keys(conditions)
 
+// Noms lisibles des zones du corps
+export const zoneLabels = {
+  tete: 'Tete',
+  torse: 'Torse',
+  abdomen: 'Abdomen',
+  brasG: 'Bras gauche',
+  brasD: 'Bras droit',
+  jambeG: 'Jambe gauche',
+  jambeD: 'Jambe droite',
+}
+
 // Niveaux d'efficacité du traitement (renseignés en second temps)
 export const efficacyLevels = ['Pas encore', 'Un peu', 'Bien']
 

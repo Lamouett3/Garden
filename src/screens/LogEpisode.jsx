@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { conditions, conditionKeys, durations, efficacyLevels } from '../data/conditions'
+import { conditions, conditionKeys, durations, efficacyLevels, zoneLabels } from '../data/conditions'
 import { colors, radius } from '../theme/tokens'
 import BodySilhouette from '../components/BodySilhouette'
 import { Screen, ScreenHeader, Chip, PrimaryButton } from '../components/ui'
 import { useStore } from '../data/store'
 
+const COND_ICONS = { migraine: 'ti-brain', sii: 'ti-stomach', fibro: 'ti-ripple' }
+
 export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const { addEpisode } = useStore()
-  const [condKey, setCondKey] = useState('migraine')
+  const [condKey, setCondKey] = useState(null)
+  const [search, setSearch] = useState('')
   const [zones, setZones] = useState([])
   const [intensity, setIntensity] = useState(5)
   const [duration, setDuration] = useState('2-4h')
@@ -17,22 +20,33 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const [showDetails, setShowDetails] = useState(false)
   const [extra, setExtra] = useState([])
 
-  const cond = conditions[condKey]
+  const cond = condKey ? conditions[condKey] : null
   const wide = bp === 'desktop'
 
-  const switchCond = (k) => { setCondKey(k); setZones([]); setTriggers([]); setExtra([]) }
+  const switchCond = (k) => { setCondKey(k); setSearch(''); setZones([]); setTriggers([]); setExtra([]) }
   const toggle = (val, list, setList) =>
     setList(list.includes(val) ? list.filter((x) => x !== val) : [...list, val])
 
   const showEfficacy = treatment !== 'Aucun'
-  const treatmentOptions = ['Aucun', cond.treatment, 'Autre']
+  const treatmentOptions = cond ? ['Aucun', cond.treatment, 'Autre'] : []
 
   const handleSave = () => {
+    if (!condKey) return
     addEpisode({ condition: condKey, zones, intensity, duration, triggers, treatment, efficacy, extra })
     onSaved?.()
   }
 
-  const silhouetteBlock = (
+  // Filtrage des conditions par recherche
+  const q = search.toLowerCase().trim()
+  const filteredKeys = q
+    ? conditionKeys.filter((k) => {
+        const c = conditions[k]
+        const haystack = [c.label, ...c.zones.map((z) => zoneLabels[z] || z), ...c.triggers, ...c.extra.options].join(' ').toLowerCase()
+        return haystack.includes(q)
+      })
+    : conditionKeys
+
+  const silhouetteBlock = cond && (
     <div>
       <Label>
         {'Ou ? '}
@@ -48,7 +62,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
     </div>
   )
 
-  const controlsBlock = (
+  const controlsBlock = cond && (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
         <span style={{ fontSize: 13, color: colors.text.muted }}>Intensite</span>
@@ -88,97 +102,177 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
     <Screen bp={bp} wide={wide}>
       <ScreenHeader title="Noter un episode" subtitle={formatNow()} onBack={onBack} />
 
-      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 18 }}>
-        {conditionKeys.map((k) => {
-          const active = k === condKey
-          return (
-            <button key={k} onClick={() => switchCond(k)}
+      {/* Barre de recherche + selection de pathologie */}
+      {!condKey ? (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: colors.green.soft, borderRadius: radius.lg, padding: '10px 14px', marginBottom: 12,
+          }}>
+            <i className="ti ti-search" style={{ color: colors.text.faint, fontSize: 17 }} aria-hidden="true" />
+            <input
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une pathologie, zone, symptome..."
               style={{
-                fontSize: 13, padding: '7px 14px', borderRadius: radius.pill, cursor: 'pointer',
-                border: `1.5px solid ${active ? colors.green.primary : colors.border.soft}`,
-                background: active ? colors.green.primary : 'transparent',
-                color: active ? '#fff' : colors.text.muted,
-              }}>
-              {conditions[k].label}
-            </button>
-          )
-        })}
-      </div>
-
-      {wide ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 28, alignItems: 'start' }}>
-          {silhouetteBlock}
-          {controlsBlock}
-        </div>
-      ) : (
-        <>
-          {silhouetteBlock}
-          {controlsBlock}
-        </>
-      )}
-
-      <Label>Traitement pris</Label>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-        {treatmentOptions.map((m) => (
-          <Chip key={m} active={treatment === m}
-            onClick={() => { setTreatment(m); if (m === 'Aucun') setEfficacy(null) }}>{m}</Chip>
-        ))}
-      </div>
-
-      {showEfficacy && (
-        <div style={{ background: colors.sand.bg, borderRadius: radius.md, padding: '12px 14px', marginBottom: 18 }}>
-          <div style={{ fontSize: 12, color: colors.sand.text, marginBottom: 9, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="ti ti-bell" aria-hidden="true" /> On te le redemandera dans quelques heures
+                flex: 1, border: 'none', background: 'transparent', outline: 'none',
+                fontSize: 13, color: colors.text.body, fontFamily: 'inherit',
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')}
+                style={{ border: 'none', background: 'transparent', color: colors.text.faint, padding: 0, cursor: 'pointer' }}>
+                <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
+              </button>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: colors.text.muted, marginBottom: 8 }}>
-            {'A-t-il soulage ? '}<span style={{ color: colors.sand.faint, fontSize: 12 }}>{'\u2014 tu peux repondre plus tard'}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {efficacyLevels.map((lvl) => {
-              const active = efficacy === lvl
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filteredKeys.map((k) => {
+              const c = conditions[k]
               return (
-                <button key={lvl} onClick={() => setEfficacy(lvl)}
+                <button key={k} onClick={() => switchCond(k)}
                   style={{
-                    flex: 1, fontSize: 12, padding: '8px 0', borderRadius: radius.md, cursor: 'pointer',
-                    border: `1.5px solid ${active ? colors.border.leaf : colors.border.soft}`,
-                    background: active ? colors.green.soft : colors.green.surface,
-                    color: active ? colors.green.primaryDark : colors.text.muted,
+                    display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
+                    background: colors.green.surface, border: `1.5px solid ${colors.border.soft}`,
+                    borderRadius: radius.md, padding: '12px 14px', cursor: 'pointer', width: '100%',
                   }}>
-                  {lvl}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: colors.green.soft, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <i className={`ti ${COND_ICONS[k] || 'ti-heart-rate-monitor'}`}
+                      style={{ fontSize: 18, color: colors.green.primary }} aria-hidden="true" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: colors.text.title, marginBottom: 3 }}>
+                      {c.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: colors.text.soft, marginBottom: 5 }}>
+                      <i className="ti ti-map-pin" style={{ fontSize: 12 }} aria-hidden="true" /> {c.zones.map((z) => zoneLabels[z] || z).join(', ')}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {c.triggers.slice(0, 4).map((t) => (
+                        <span key={t} style={{
+                          fontSize: 10, padding: '2px 7px', borderRadius: radius.sm,
+                          background: colors.amber.bg, color: colors.amber.text,
+                        }}>{t}</span>
+                      ))}
+                      {c.extra.options.slice(0, 2).map((o) => (
+                        <span key={o} style={{
+                          fontSize: 10, padding: '2px 7px', borderRadius: radius.sm,
+                          background: colors.green.soft, color: colors.green.primaryDark,
+                        }}>{o}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <i className="ti ti-chevron-right" style={{ color: colors.text.faint, fontSize: 16, marginTop: 10 }} aria-hidden="true" />
                 </button>
               )
             })}
+            {filteredKeys.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 16, fontSize: 13, color: colors.text.faint }}>
+                Aucune pathologie ne correspond a ta recherche.
+              </div>
+            )}
           </div>
         </div>
-      )}
-      {!showEfficacy && <div style={{ height: 18 }} />}
-
-      <button onClick={() => setShowDetails((v) => !v)}
-        style={{
-          width: '100%', background: colors.sand.bg, borderRadius: radius.md, padding: '13px 14px',
-          marginBottom: showDetails ? 12 : 18, border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-        <span style={{ fontSize: 13, color: colors.sand.text, display: 'flex', alignItems: 'center', gap: 7 }}>
-          <i className={`ti ${showDetails ? 'ti-minus' : 'ti-plus'}`} aria-hidden="true" /> {cond.extra.label}
-        </span>
-        <i className={`ti ${showDetails ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: colors.sand.faint }} aria-hidden="true" />
-      </button>
-
-      {showDetails && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-          {cond.extra.options.map((o) => (
-            <Chip key={o} variant="green" active={extra.includes(o)} onClick={() => toggle(o, extra, setExtra)}>{o}</Chip>
-          ))}
-        </div>
+      ) : (
+        <button onClick={() => setCondKey(null)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 18,
+            background: colors.green.primary, border: 'none', borderRadius: radius.md,
+            padding: '10px 14px', cursor: 'pointer',
+          }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+            background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <i className={`ti ${COND_ICONS[condKey] || 'ti-heart-rate-monitor'}`}
+              style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
+          </div>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#fff', textAlign: 'left' }}>{cond.label}</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>Changer</span>
+          <i className="ti ti-chevron-down" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }} aria-hidden="true" />
+        </button>
       )}
 
-      <div style={{ flex: 1 }} />
+      {cond && (
+        <>
+          {wide ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 28, alignItems: 'start' }}>
+              {silhouetteBlock}
+              {controlsBlock}
+            </div>
+          ) : (
+            <>
+              {silhouetteBlock}
+              {controlsBlock}
+            </>
+          )}
 
-      <PrimaryButton icon="ti-check" onClick={handleSave}>Enregistrer</PrimaryButton>
-      <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 11, marginBottom: 0 }}>
-        {"Saisie rapide \u00b7 l'efficacite se note plus tard"}
-      </p>
+          <Label>Traitement pris</Label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {treatmentOptions.map((m) => (
+              <Chip key={m} active={treatment === m}
+                onClick={() => { setTreatment(m); if (m === 'Aucun') setEfficacy(null) }}>{m}</Chip>
+            ))}
+          </div>
+
+          {showEfficacy && (
+            <div style={{ background: colors.sand.bg, borderRadius: radius.md, padding: '12px 14px', marginBottom: 18 }}>
+              <div style={{ fontSize: 12, color: colors.sand.text, marginBottom: 9, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="ti ti-bell" aria-hidden="true" /> On te le redemandera dans quelques heures
+              </div>
+              <div style={{ fontSize: 13, color: colors.text.muted, marginBottom: 8 }}>
+                {'A-t-il soulage ? '}<span style={{ color: colors.sand.faint, fontSize: 12 }}>{'\u2014 tu peux repondre plus tard'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {efficacyLevels.map((lvl) => {
+                  const active = efficacy === lvl
+                  return (
+                    <button key={lvl} onClick={() => setEfficacy(lvl)}
+                      style={{
+                        flex: 1, fontSize: 12, padding: '8px 0', borderRadius: radius.md, cursor: 'pointer',
+                        border: `1.5px solid ${active ? colors.border.leaf : colors.border.soft}`,
+                        background: active ? colors.green.soft : colors.green.surface,
+                        color: active ? colors.green.primaryDark : colors.text.muted,
+                      }}>
+                      {lvl}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {!showEfficacy && <div style={{ height: 18 }} />}
+
+          <button onClick={() => setShowDetails((v) => !v)}
+            style={{
+              width: '100%', background: colors.sand.bg, borderRadius: radius.md, padding: '13px 14px',
+              marginBottom: showDetails ? 12 : 18, border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+            <span style={{ fontSize: 13, color: colors.sand.text, display: 'flex', alignItems: 'center', gap: 7 }}>
+              <i className={`ti ${showDetails ? 'ti-minus' : 'ti-plus'}`} aria-hidden="true" /> {cond.extra.label}
+            </span>
+            <i className={`ti ${showDetails ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: colors.sand.faint }} aria-hidden="true" />
+          </button>
+
+          {showDetails && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
+              {cond.extra.options.map((o) => (
+                <Chip key={o} variant="green" active={extra.includes(o)} onClick={() => toggle(o, extra, setExtra)}>{o}</Chip>
+              ))}
+            </div>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          <PrimaryButton icon="ti-check" onClick={handleSave}>Enregistrer</PrimaryButton>
+          <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 11, marginBottom: 0 }}>
+            {"Saisie rapide \u00b7 l'efficacite se note plus tard"}
+          </p>
+        </>
+      )}
     </Screen>
   )
 }

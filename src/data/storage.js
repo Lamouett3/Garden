@@ -71,6 +71,43 @@ export function saveProfile(profile) {
   }
 }
 
+// ---- Phase du cycle menstruel ----
+
+const CYCLE_PHASES = [
+  { max: 5,  label: 'Regles',       icon: 'ti-droplet',  color: 'pink' },
+  { max: 13, label: 'Folliculaire', icon: 'ti-arrow-up', color: 'green' },
+  { max: 16, label: 'Ovulation',    icon: 'ti-sun',      color: 'amber' },
+  { max: 99, label: 'Luteale',      icon: 'ti-leaf',     color: 'sand' },
+]
+
+/**
+ * Calcule la phase actuelle du cycle menstruel.
+ * Renvoie { label, icon, color, day } ou null si les donnees sont absentes.
+ */
+export function getCyclePhase(profile) {
+  if (!profile.cycleOn || !profile.lastPeriod) return null
+  const start = new Date(profile.lastPeriod)
+  if (isNaN(start.getTime())) return null
+  const today = new Date()
+  const diffMs = today.getTime() - start.getTime()
+  if (diffMs < 0) return null
+  const cycleLen = profile.cycleLength || 28
+  const dayInCycle = (Math.floor(diffMs / 86400000) % cycleLen) + 1
+  // Adapter les seuils au cycle reel (phase luteale = 14j fixes, le reste s'ajuste)
+  const follEnd = Math.max(6, cycleLen - 16)
+  const ovuEnd = follEnd + 3
+  const thresholds = [
+    { max: 5,      ...CYCLE_PHASES[0] },
+    { max: follEnd, ...CYCLE_PHASES[1] },
+    { max: ovuEnd,  ...CYCLE_PHASES[2] },
+    { max: cycleLen, ...CYCLE_PHASES[3] },
+  ]
+  for (const phase of thresholds) {
+    if (dayInCycle <= phase.max) return { label: phase.label, icon: phase.icon, color: phase.color, day: dayInCycle, total: cycleLen }
+  }
+  return { ...CYCLE_PHASES[3], day: dayInCycle, total: cycleLen }
+}
+
 // ---- Helpers de dates ----
 
 export function dayKey(date) {
