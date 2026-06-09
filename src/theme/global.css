@@ -1,0 +1,60 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  background: #d9e3da;
+  color: #2e4034;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Range slider teinté jardin */
+input[type='range'] {
+  accent-color: #5a8262;
+}
+
+/* Scrollbar discrète */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c4d4c7;
+  border-radius: 4px;
+}
+
+/* Accessibilité : focus visible */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #5a8262;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Impression du rapport médecin (export PDF via le navigateur) */
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .report-wrap { background: #fff !important; padding: 0 !important; }
+  .report-card { border: none !important; width: 100% !important; }
+  nav { display: none !important; }
+}
+
+/* Base responsive */
+html, body { width: 100%; overflow-x: hidden; }
+img, svg { max-width: 100%; }
+
+/* Empêche le zoom involontaire sur les champs iOS (police >= 16px) */
+input[type="text"], input[type="number"], input[type="date"], select, textarea { font-size: 16px; }
