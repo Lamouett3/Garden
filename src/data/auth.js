@@ -144,8 +144,8 @@ function dayKeyForSeed(date) {
 }
 
 /**
- * Cree le compte test "Marie" avec 11 jours d'episodes
- * repartis sur les 13 derniers jours.
+ * Cree le compte test "Marie" avec 6 jours d'episodes
+ * repartis sur les 7 derniers jours (jour 6/7 du cycle jardin).
  * Ne s'execute qu'une seule fois (si le compte n'existe pas deja).
  */
 export function seedTestAccount() {
@@ -163,10 +163,10 @@ export function seedTestAccount() {
 
   const now = new Date()
   const gardenStart = new Date(now)
-  gardenStart.setDate(gardenStart.getDate() - 13)
+  gardenStart.setDate(gardenStart.getDate() - 6)
 
-  // 11 jours d'episodes sur 13 jours (jours 1,2,3,4,5,7,8,9,10,12,13)
-  const dayOffsets = [13, 12, 11, 10, 9, 7, 6, 5, 4, 2, 1]
+  // 6 jours d'episodes sur 7 jours (skip jour 4 = il y a 3 jours)
+  const dayOffsets = [6, 5, 4, 2, 1, 0]
   const templates = [
     { condition: 'migraine', zones: ['tete'], triggers: ['Stress'], treatment: 'Triptan', extra: ['Nausee'], intensity: 6, duration: '2-4h', hour: 8 },
     { condition: 'sii', zones: ['abdomen'], triggers: ['Aliment gras'], treatment: 'Antispasmodique', extra: ['Molle'], intensity: 4, duration: '<1h', hour: 12 },
@@ -174,11 +174,6 @@ export function seedTestAccount() {
     { condition: 'migraine', zones: ['tete'], triggers: ['Ecran', 'Stress'], treatment: 'Aucun', extra: ['Photophobie'], intensity: 5, duration: '2-4h', hour: 14 },
     { condition: 'sii', zones: ['abdomen'], triggers: ['Lactose'], treatment: 'Aucun', extra: ['Liquide'], intensity: 3, duration: '<1h', hour: 16 },
     { condition: 'fibro', zones: ['jambeG', 'jambeD'], triggers: ['Effort', 'Froid'], treatment: 'Antalgique', extra: ['Raideur matinale'], intensity: 8, duration: '+1j', hour: 9 },
-    { condition: 'migraine', zones: ['tete'], triggers: ['Sommeil'], treatment: 'Triptan', extra: ['Aura'], intensity: 6, duration: '2-4h', hour: 19 },
-    { condition: 'sii', zones: ['abdomen'], triggers: ['Stress', 'Cafeine'], treatment: 'Antispasmodique', extra: ['Normale'], intensity: 3, duration: '<1h', hour: 11 },
-    { condition: 'migraine', zones: ['tete'], triggers: ['Meteo'], treatment: 'Aucun', extra: [], intensity: 4, duration: '<1h', hour: 15 },
-    { condition: 'fibro', zones: ['torse', 'brasD', 'brasG'], triggers: ['Stress'], treatment: 'Aucun', extra: ['Fatigue intense'], intensity: 7, duration: '½ jour', hour: 10 },
-    { condition: 'migraine', zones: ['tete'], triggers: ['Regles'], treatment: 'Triptan', extra: ['Nausee', 'Photophobie'], intensity: 8, duration: '+1j', hour: 8 },
   ]
 
   const episodes = dayOffsets.map((offset, i) => {
@@ -210,7 +205,7 @@ export function seedTestAccount() {
     lastPeriod: dayKeyForSeed(lastPeriod),
     planetsOn: true,
     gardenStartDate: dayKeyForSeed(gardenStart),
-    completedGardens: 0,
+    completedGardens: 1,
   }
 
   try {

@@ -1,14 +1,18 @@
 import { useState } from 'react'
-import { conditions, conditionKeys, durations, efficacyLevels, zoneLabels } from '../data/conditions'
+import { conditions, conditionKeys, durations, efficacyLevels, zoneLabels, genderFilteredTriggers } from '../data/conditions'
 import { colors, radius } from '../theme/tokens'
 import BodySilhouette from '../components/BodySilhouette'
 import { Screen, ScreenHeader, Chip, PrimaryButton } from '../components/ui'
 import { useStore } from '../data/store'
 
-const COND_ICONS = { migraine: 'ti-brain', sii: 'ti-stomach', fibro: 'ti-ripple' }
+const COND_ICONS = {
+  migraine: 'ti-brain', sii: 'ti-stomach', fibro: 'ti-ripple',
+  endometriose: 'ti-droplet-half-2', eczema: 'ti-hand-finger',
+  asthme: 'ti-lungs', arthrose: 'ti-bone', autre: 'ti-pencil',
+}
 
 export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
-  const { addEpisode } = useStore()
+  const { addEpisode, profile } = useStore()
   const [condKey, setCondKey] = useState(null)
   const [search, setSearch] = useState('')
   const [zones, setZones] = useState([])
@@ -19,32 +23,45 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const [efficacy, setEfficacy] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
   const [extra, setExtra] = useState([])
+  const [customLabel, setCustomLabel] = useState('')
+  const [customExtra, setCustomExtra] = useState('')
 
   const cond = condKey ? conditions[condKey] : null
   const wide = bp === 'desktop'
 
-  const switchCond = (k) => { setCondKey(k); setSearch(''); setZones([]); setTriggers([]); setExtra([]) }
+  const switchCond = (k) => { setCondKey(k); setSearch(''); setZones([]); setTriggers([]); setExtra([]); setCustomLabel(''); setCustomExtra('') }
   const toggle = (val, list, setList) =>
     setList(list.includes(val) ? list.filter((x) => x !== val) : [...list, val])
 
   const showEfficacy = treatment !== 'Aucun'
   const treatmentOptions = cond ? ['Aucun', cond.treatment, 'Autre'] : []
 
+  // Filtrer les triggers selon le genre
+  const hiddenTriggers = genderFilteredTriggers[profile.gender] || []
+  const visibleTriggers = cond ? cond.triggers.filter((t) => !hiddenTriggers.includes(t)) : []
+
+  // Conditions masquees selon le genre (endometriose masquee pour les hommes)
+  const hiddenConditions = profile.gender === 'h' ? ['endometriose'] : []
+
   const handleSave = () => {
     if (!condKey) return
-    addEpisode({ condition: condKey, zones, intensity, duration, triggers, treatment, efficacy, extra })
+    const episode = { condition: condKey, zones, intensity, duration, triggers, treatment, efficacy, extra }
+    if (cond.custom && customLabel) episode.customLabel = customLabel
+    if (customExtra.trim()) episode.extra = [...extra, customExtra.trim()]
+    addEpisode(episode)
     onSaved?.()
   }
 
   // Filtrage des conditions par recherche
   const q = search.toLowerCase().trim()
+  const visibleKeys = conditionKeys.filter((k) => !hiddenConditions.includes(k))
   const filteredKeys = q
-    ? conditionKeys.filter((k) => {
+    ? visibleKeys.filter((k) => {
         const c = conditions[k]
         const haystack = [c.label, ...c.zones.map((z) => zoneLabels[z] || z), ...c.triggers, ...c.extra.options].join(' ').toLowerCase()
         return haystack.includes(q)
       })
-    : conditionKeys
+    : visibleKeys
 
   const silhouetteBlock = cond && (
     <div>
@@ -64,6 +81,20 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
 
   const controlsBlock = cond && (
     <div>
+      {/* Champ libre pour "Autre pathologie" */}
+      {cond.custom && (
+        <div style={{ marginBottom: 16 }}>
+          <Label>Nom de ta pathologie</Label>
+          <input type="text" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)}
+            placeholder="Ex. : lombalgie, acouphenes..."
+            style={{
+              width: '100%', padding: '10px 13px', fontSize: 13, fontFamily: 'inherit',
+              border: `1.5px solid ${colors.border.soft}`, borderRadius: radius.sm,
+              background: colors.green.surface, color: colors.text.body, boxSizing: 'border-box',
+            }} />
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
         <span style={{ fontSize: 13, color: colors.text.muted }}>Intensite</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.body }}>{intensity}/10</span>
@@ -82,6 +113,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
                 border: `1.5px solid ${active ? colors.border.leaf : colors.border.soft}`,
                 background: active ? colors.green.soft : 'transparent',
                 color: active ? colors.green.primaryDark : colors.text.muted,
+                fontFamily: 'inherit',
               }}>
               {d}
             </button>
@@ -91,7 +123,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
 
       <Label>Declencheurs possibles</Label>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-        {cond.triggers.map((t) => (
+        {visibleTriggers.map((t) => (
           <Chip key={t} active={triggers.includes(t)} onClick={() => toggle(t, triggers, setTriggers)}>{t}</Chip>
         ))}
       </div>
@@ -134,35 +166,46 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
                     display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
                     background: colors.green.surface, border: `1.5px solid ${colors.border.soft}`,
                     borderRadius: radius.md, padding: '12px 14px', cursor: 'pointer', width: '100%',
+                    fontFamily: 'inherit',
                   }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                    background: colors.green.soft, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: c.custom ? colors.sand.bg : colors.green.soft,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <i className={`ti ${COND_ICONS[k] || 'ti-heart-rate-monitor'}`}
-                      style={{ fontSize: 18, color: colors.green.primary }} aria-hidden="true" />
+                      style={{ fontSize: 18, color: c.custom ? colors.sand.text : colors.green.primary }} aria-hidden="true" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: colors.text.title, marginBottom: 3 }}>
                       {c.label}
                     </div>
-                    <div style={{ fontSize: 11, color: colors.text.soft, marginBottom: 5 }}>
-                      <i className="ti ti-map-pin" style={{ fontSize: 12 }} aria-hidden="true" /> {c.zones.map((z) => zoneLabels[z] || z).join(', ')}
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {c.triggers.slice(0, 4).map((t) => (
-                        <span key={t} style={{
-                          fontSize: 10, padding: '2px 7px', borderRadius: radius.sm,
-                          background: colors.amber.bg, color: colors.amber.text,
-                        }}>{t}</span>
-                      ))}
-                      {c.extra.options.slice(0, 2).map((o) => (
-                        <span key={o} style={{
-                          fontSize: 10, padding: '2px 7px', borderRadius: radius.sm,
-                          background: colors.green.soft, color: colors.green.primaryDark,
-                        }}>{o}</span>
-                      ))}
-                    </div>
+                    {!c.custom && (
+                      <>
+                        <div style={{ fontSize: 11, color: colors.text.soft, marginBottom: 5 }}>
+                          <i className="ti ti-map-pin" style={{ fontSize: 12 }} aria-hidden="true" /> {c.zones.map((z) => zoneLabels[z] || z).join(', ')}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {c.triggers.filter((t) => !hiddenTriggers.includes(t)).slice(0, 4).map((t) => (
+                            <span key={t} style={{
+                              fontSize: 10, padding: '2px 7px', borderRadius: radius.sm,
+                              background: colors.amber.bg, color: colors.amber.text,
+                            }}>{t}</span>
+                          ))}
+                          {c.extra.options.slice(0, 2).map((o) => (
+                            <span key={o} style={{
+                              fontSize: 10, padding: '2px 7px', borderRadius: radius.sm,
+                              background: colors.green.soft, color: colors.green.primaryDark,
+                            }}>{o}</span>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {c.custom && (
+                      <div style={{ fontSize: 11, color: colors.text.soft }}>
+                        Decris ta propre pathologie
+                      </div>
+                    )}
                   </div>
                   <i className="ti ti-chevron-right" style={{ color: colors.text.faint, fontSize: 16, marginTop: 10 }} aria-hidden="true" />
                 </button>
@@ -180,7 +223,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
           style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 18,
             background: colors.green.primary, border: 'none', borderRadius: radius.md,
-            padding: '10px 14px', cursor: 'pointer',
+            padding: '10px 14px', cursor: 'pointer', fontFamily: 'inherit',
           }}>
           <div style={{
             width: 30, height: 30, borderRadius: 8, flexShrink: 0,
@@ -189,7 +232,9 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
             <i className={`ti ${COND_ICONS[condKey] || 'ti-heart-rate-monitor'}`}
               style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
           </div>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#fff', textAlign: 'left' }}>{cond.label}</span>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#fff', textAlign: 'left' }}>
+            {cond.custom && customLabel ? customLabel : cond.label}
+          </span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>Changer</span>
           <i className="ti ti-chevron-down" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }} aria-hidden="true" />
         </button>
@@ -235,6 +280,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
                         border: `1.5px solid ${active ? colors.border.leaf : colors.border.soft}`,
                         background: active ? colors.green.soft : colors.green.surface,
                         color: active ? colors.green.primaryDark : colors.text.muted,
+                        fontFamily: 'inherit',
                       }}>
                       {lvl}
                     </button>
@@ -245,24 +291,46 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
           )}
           {!showEfficacy && <div style={{ height: 18 }} />}
 
-          <button onClick={() => setShowDetails((v) => !v)}
-            style={{
-              width: '100%', background: colors.sand.bg, borderRadius: radius.md, padding: '13px 14px',
-              marginBottom: showDetails ? 12 : 18, border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-            <span style={{ fontSize: 13, color: colors.sand.text, display: 'flex', alignItems: 'center', gap: 7 }}>
-              <i className={`ti ${showDetails ? 'ti-minus' : 'ti-plus'}`} aria-hidden="true" /> {cond.extra.label}
-            </span>
-            <i className={`ti ${showDetails ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: colors.sand.faint }} aria-hidden="true" />
-          </button>
+          {/* Details supplementaires / extra */}
+          {(cond.extra.options.length > 0 || cond.custom) && (
+            <>
+              <button onClick={() => setShowDetails((v) => !v)}
+                style={{
+                  width: '100%', background: colors.sand.bg, borderRadius: radius.md, padding: '13px 14px',
+                  marginBottom: showDetails ? 12 : 18, border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  fontFamily: 'inherit',
+                }}>
+                <span style={{ fontSize: 13, color: colors.sand.text, display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <i className={`ti ${showDetails ? 'ti-minus' : 'ti-plus'}`} aria-hidden="true" /> {cond.extra.label || 'Plus de details'}
+                </span>
+                <i className={`ti ${showDetails ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: colors.sand.faint }} aria-hidden="true" />
+              </button>
 
-          {showDetails && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-              {cond.extra.options.map((o) => (
-                <Chip key={o} variant="green" active={extra.includes(o)} onClick={() => toggle(o, extra, setExtra)}>{o}</Chip>
-              ))}
-            </div>
+              {showDetails && (
+                <div style={{ marginBottom: 18 }}>
+                  {cond.extra.options.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: cond.custom ? 12 : 0 }}>
+                      {cond.extra.options.map((o) => (
+                        <Chip key={o} variant="green" active={extra.includes(o)} onClick={() => toggle(o, extra, setExtra)}>{o}</Chip>
+                      ))}
+                    </div>
+                  )}
+                  {cond.custom && (
+                    <div>
+                      <div style={{ fontSize: 12, color: colors.text.muted, marginBottom: 6 }}>Precision libre</div>
+                      <input type="text" value={customExtra} onChange={(e) => setCustomExtra(e.target.value)}
+                        placeholder="Decris tes symptomes..."
+                        style={{
+                          width: '100%', padding: '10px 13px', fontSize: 13, fontFamily: 'inherit',
+                          border: `1.5px solid ${colors.border.soft}`, borderRadius: radius.sm,
+                          background: colors.green.surface, color: colors.text.body, boxSizing: 'border-box',
+                        }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           <div style={{ flex: 1 }} />

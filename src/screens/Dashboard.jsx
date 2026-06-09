@@ -4,7 +4,7 @@ import { Screen, ScreenHeader, StreakBadge, Segmented } from '../components/ui'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
-import { computeStats, buildSeries } from '../data/stats'
+import { computeStats, buildSeries, withoutBienetre } from '../data/stats'
 
 const BAR_COLOR = {
   calm: colors.green.leaf,
@@ -65,11 +65,12 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
   const [view, setView] = useState('s')
   const wide = bp === 'desktop'
 
+  const real = withoutBienetre(episodes)
   const streak = currentStreak(episodes)
-  const stats = computeStats(episodes)
-  const series = buildSeries(episodes, view)
+  const stats = computeStats(real)
+  const series = buildSeries(real, view)
 
-  if (episodes.length === 0) {
+  if (real.length === 0) {
     return (
       <Screen bp={bp}>
         <ScreenHeader title="Mon historique" />

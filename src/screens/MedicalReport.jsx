@@ -2,10 +2,11 @@ import { colors, radius, font } from '../theme/tokens'
 import { PrimaryButton } from '../components/ui'
 
 import { useStore } from '../data/store'
-import { computeStats } from '../data/stats'
+import { computeStats, withoutBienetre } from '../data/stats'
 
 export default function MedicalReport({ bp = 'mobile' }) {
-  const { episodes } = useStore()
+  const { episodes: allEpisodes } = useStore()
+  const episodes = withoutBienetre(allEpisodes)
   const stats = computeStats(episodes)
 
   const cardW = bp === 'desktop' ? 560 : bp === 'tablet' ? 480 : 360

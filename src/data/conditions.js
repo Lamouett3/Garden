@@ -9,27 +9,26 @@
 export const conditions = {
   migraine: {
     label: 'Migraine',
-    zones: ['tete'],              // zones suggérées sur la silhouette
-    triggers: ['Sommeil', 'Stress', 'Règles', 'Aliment', 'Météo', 'Écran'],
+    zones: ['tete'],
+    triggers: ['Sommeil', 'Stress', 'Regles', 'Aliment', 'Meteo', 'Ecran'],
     treatment: 'Triptan',
-    // brique spécifique optionnelle (affichée dans "Plus de détails")
     extra: {
-      label: 'Symptômes associés',
-      options: ['Aura', 'Nausée', 'Photophobie'],
+      label: 'Symptomes associes',
+      options: ['Aura', 'Nausee', 'Photophobie'],
     },
   },
   sii: {
     label: 'SII',
     zones: ['abdomen'],
-    triggers: ['Aliment gras', 'Stress', 'Lactose', 'Gluten', 'Caféine'],
+    triggers: ['Aliment gras', 'Stress', 'Lactose', 'Gluten', 'Cafeine'],
     treatment: 'Antispasmodique',
     extra: {
-      label: 'Selles (échelle de Bristol)',
+      label: 'Selles (echelle de Bristol)',
       options: ['Dure', 'Normale', 'Molle', 'Liquide'],
     },
   },
   fibro: {
-    label: 'Fibro',
+    label: 'Fibromyalgie',
     zones: ['torse', 'brasG', 'brasD', 'jambeG', 'jambeD'],
     triggers: ['Sommeil', 'Stress', 'Effort', 'Froid'],
     treatment: 'Antalgique',
@@ -37,6 +36,57 @@ export const conditions = {
       label: 'Autres',
       options: ['Raideur matinale', 'Fatigue intense'],
     },
+  },
+  endometriose: {
+    label: 'Endometriose',
+    zones: ['abdomen'],
+    triggers: ['Regles', 'Stress', 'Effort', 'Rapports'],
+    treatment: 'Antalgique',
+    extra: {
+      label: 'Symptomes associes',
+      options: ['Crampes', 'Nausee', 'Fatigue', 'Saignements anormaux'],
+    },
+  },
+  eczema: {
+    label: 'Eczema',
+    zones: ['brasG', 'brasD', 'jambeG', 'jambeD', 'torse'],
+    triggers: ['Stress', 'Allergene', 'Chaleur', 'Produit chimique', 'Aliment'],
+    treatment: 'Corticoide local',
+    extra: {
+      label: 'Aspect',
+      options: ['Plaques rouges', 'Suintement', 'Croutes', 'Secheresse'],
+    },
+  },
+  asthme: {
+    label: 'Asthme',
+    zones: ['torse'],
+    triggers: ['Effort', 'Allergene', 'Froid', 'Pollution', 'Stress'],
+    treatment: 'Bronchodilatateur',
+    extra: {
+      label: 'Symptomes',
+      options: ['Sifflement', 'Toux seche', 'Oppression', 'Essoufflement'],
+    },
+  },
+  arthrose: {
+    label: 'Arthrose',
+    zones: ['jambeG', 'jambeD', 'brasG', 'brasD'],
+    triggers: ['Effort', 'Froid', 'Humidite', 'Immobilite prolongee'],
+    treatment: 'Anti-inflammatoire',
+    extra: {
+      label: 'Symptomes',
+      options: ['Raideur', 'Gonflement', 'Craquements', 'Perte de mobilite'],
+    },
+  },
+  autre: {
+    label: 'Autre pathologie',
+    zones: ['tete', 'torse', 'abdomen', 'brasG', 'brasD', 'jambeG', 'jambeD'],
+    triggers: ['Stress', 'Sommeil', 'Effort', 'Aliment', 'Meteo', 'Froid'],
+    treatment: 'Medicament',
+    extra: {
+      label: 'Precision',
+      options: [],
+    },
+    custom: true, // signale qu'un champ libre est propose
   },
 }
 
@@ -51,6 +101,11 @@ export const zoneLabels = {
   brasD: 'Bras droit',
   jambeG: 'Jambe gauche',
   jambeD: 'Jambe droite',
+}
+
+// Declencheurs lies au genre — masques pour certains profils
+export const genderFilteredTriggers = {
+  h: ['Regles', 'Rapports'],
 }
 
 // Niveaux d'efficacité du traitement (renseignés en second temps)

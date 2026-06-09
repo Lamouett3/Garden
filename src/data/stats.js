@@ -9,6 +9,11 @@ function fmt1(n) {
   return (Math.round(n * 10) / 10).toString().replace('.', ',')
 }
 
+// Exclut les episodes "bien-etre" (pas de symptome, juste maintien de serie)
+export function withoutBienetre(episodes) {
+  return episodes.filter((e) => e.condition !== 'bienetre')
+}
+
 // Filtre les épisodes d'une pathologie (ou tous si null)
 export function filterByCondition(episodes, condition) {
   return condition ? episodes.filter((e) => e.condition === condition) : episodes

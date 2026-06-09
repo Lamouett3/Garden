@@ -12,10 +12,10 @@ const CYCLE_COLORS = {
   sand: { bg: colors.sand.bg, text: colors.sand.text, accent: colors.sand.faint },
 }
 
-const GARDEN_GOAL = 14
+const GARDEN_GOAL = 7
 
 export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
-  const { episodes, profile, updateProfile } = useStore()
+  const { episodes, profile, updateProfile, addEpisode } = useStore()
   const gardenDays = gardenLoggedDays(episodes, profile.gardenStartDate)
   const gardenDayCount = gardenDays.size
   const gardenComplete = gardenDayCount >= GARDEN_GOAL
@@ -32,6 +32,19 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
     updateProfile({
       completedGardens: (profile.completedGardens || 0) + 1,
       gardenStartDate: today,
+    })
+  }
+
+  function handleAllGood() {
+    addEpisode({
+      condition: 'bienetre',
+      zones: [],
+      intensity: 0,
+      duration: '',
+      triggers: [],
+      treatment: 'Aucun',
+      efficacy: null,
+      extra: [],
     })
   }
 
@@ -135,6 +148,17 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         <div style={{ flex: 1 }}>
           <PrimaryButton icon="ti-plus" onClick={onLog}>Noter un episode</PrimaryButton>
         </div>
+        {!loggedToday && (
+          <button onClick={handleAllGood}
+            style={{
+              flex: 1, border: `1.5px solid ${colors.green.leafLight}`,
+              background: colors.green.soft, color: colors.green.primaryDark, padding: 13, borderRadius: radius.lg,
+              fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+            <i className="ti ti-sun" aria-hidden="true" /> Tout va bien aujourd'hui
+          </button>
+        )}
         <button onClick={onSeeHistory}
           style={{
             flex: 1, border: `1.5px solid ${colors.border.soft}`,

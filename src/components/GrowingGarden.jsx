@@ -218,8 +218,8 @@ function Plant({ x, index, maturity }) {
 }
 
 export default function GrowingGarden({ days = 0 }) {
-  const maturity = days >= 14 ? 2 : days >= 5 ? 1 : 0
-  const plantCount = Math.min(days, 12)
+  const maturity = days >= 7 ? 2 : days >= 3 ? 1 : 0
+  const plantCount = Math.min(days, 7)
   const positions = Array.from({ length: plantCount }, (_, i) => {
     const spread = 240 / Math.max(plantCount, 1)
     return 35 + i * spread + ((i % 2) * 6 - 3)
