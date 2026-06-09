@@ -42,36 +42,40 @@ function planetXY(angle, orbitR) {
   return { x: CX + orbitR * Math.cos(rad), y: CY + orbitR * Math.sin(rad) }
 }
 
-/** Icone SVG de phase lunaire — rendu realiste */
+// Palette lune adaptee a la DA jardin (tons chauds sur fond clair)
+const MOON = {
+  dark: '#5A6B5E',       // partie sombre — vert fonce muted
+  light: '#FFFDE7',      // partie eclairee — blanc chaud
+  rim: '#C4B17C',        // contour dore
+  glowColor: colors.amber.border, // halo dore chaud
+}
+
+/** Icone SVG de phase lunaire — rendu sur fond clair jardin */
 function MoonIcon({ phase, cx, cy, r, glow = false }) {
   const illumination = phase <= 0.5 ? phase * 2 : (1 - phase) * 2
   const waxing = phase <= 0.5
 
-  const darkFill = '#4A5568'
-  const lightFill = '#FFFDE7'
-  const rimColor = '#E8DFC0'
-
   if (illumination < 0.04) {
     return (
       <g>
-        {glow && <circle cx={cx} cy={cy} r={r + 3} fill={rimColor} opacity="0.15">
-          <animate attributeName="opacity" values="0.15;0.25;0.15" dur="3s" repeatCount="indefinite" />
+        {glow && <circle cx={cx} cy={cy} r={r + 3} fill={MOON.glowColor} opacity="0.12">
+          <animate attributeName="opacity" values="0.12;0.22;0.12" dur="3s" repeatCount="indefinite" />
         </circle>}
-        <circle cx={cx} cy={cy} r={r} fill={darkFill} />
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke={rimColor} strokeWidth="0.6" opacity="0.5" />
+        <circle cx={cx} cy={cy} r={r} fill={MOON.dark} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={MOON.rim} strokeWidth="0.6" opacity="0.4" />
       </g>
     )
   }
   if (illumination > 0.96) {
     return (
       <g>
-        {glow && <circle cx={cx} cy={cy} r={r + 4} fill={lightFill} opacity="0.2">
-          <animate attributeName="opacity" values="0.2;0.35;0.2" dur="3s" repeatCount="indefinite" />
+        {glow && <circle cx={cx} cy={cy} r={r + 4} fill={MOON.glowColor} opacity="0.15">
+          <animate attributeName="opacity" values="0.15;0.28;0.15" dur="3s" repeatCount="indefinite" />
           <animate attributeName="r" values={`${r + 3};${r + 5};${r + 3}`} dur="3s" repeatCount="indefinite" />
         </circle>}
-        <circle cx={cx} cy={cy} r={r} fill={lightFill} />
-        <circle cx={cx} cy={cy} r={r + 1.5} fill="none" stroke={lightFill} strokeWidth="0.5" opacity="0.3" />
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke={rimColor} strokeWidth="0.4" />
+        <circle cx={cx} cy={cy} r={r} fill={MOON.light} />
+        <circle cx={cx} cy={cy} r={r + 1.5} fill="none" stroke={MOON.glowColor} strokeWidth="0.5" opacity="0.25" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={MOON.rim} strokeWidth="0.4" />
       </g>
     )
   }
@@ -81,124 +85,126 @@ function MoonIcon({ phase, cx, cy, r, glow = false }) {
 
   return (
     <g>
-      {glow && <circle cx={cx} cy={cy} r={r + 3} fill={lightFill} opacity="0.12">
-        <animate attributeName="opacity" values="0.12;0.22;0.12" dur="3s" repeatCount="indefinite" />
+      {glow && <circle cx={cx} cy={cy} r={r + 3} fill={MOON.glowColor} opacity="0.1">
+        <animate attributeName="opacity" values="0.1;0.2;0.1" dur="3s" repeatCount="indefinite" />
       </circle>}
-      <circle cx={cx} cy={cy} r={r} fill={waxing ? darkFill : lightFill} />
+      <circle cx={cx} cy={cy} r={r} fill={waxing ? MOON.dark : MOON.light} />
       <path
         d={`M ${cx} ${cy - r} A ${r} ${r} 0 0 ${sweep} ${cx} ${cy + r} A ${Math.abs(k)} ${r} 0 0 ${k < 0 ? sweep : 1 - sweep} ${cx} ${cy - r}`}
-        fill={waxing ? lightFill : darkFill}
+        fill={waxing ? MOON.light : MOON.dark}
       />
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={rimColor} strokeWidth="0.4" opacity="0.6" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={MOON.rim} strokeWidth="0.4" opacity="0.5" />
     </g>
   )
 }
 
-/** Mini lune pour le bandeau de phases */
+/** Mini lune pour le bandeau de phases (fond clair) */
 function MiniMoon({ phase, cx, cy, r }) {
   const illumination = phase <= 0.5 ? phase * 2 : (1 - phase) * 2
   const waxing = phase <= 0.5
-  const darkFill = '#6B7280'
-  const lightFill = '#FFFDE7'
 
   if (illumination < 0.04) {
-    return <circle cx={cx} cy={cy} r={r} fill={darkFill} stroke="#9CA3AF" strokeWidth="0.3" />
+    return <circle cx={cx} cy={cy} r={r} fill={MOON.dark} stroke={MOON.rim} strokeWidth="0.3" opacity="0.8" />
   }
   if (illumination > 0.96) {
-    return <circle cx={cx} cy={cy} r={r} fill={lightFill} stroke="#E8DFC0" strokeWidth="0.3" />
+    return <circle cx={cx} cy={cy} r={r} fill={MOON.light} stroke={MOON.rim} strokeWidth="0.4" />
   }
   const sweep = waxing ? 1 : 0
   const k = (1 - illumination * 2) * r
   return (
     <g>
-      <circle cx={cx} cy={cy} r={r} fill={waxing ? darkFill : lightFill} />
+      <circle cx={cx} cy={cy} r={r} fill={waxing ? MOON.dark : MOON.light} />
       <path
         d={`M ${cx} ${cy - r} A ${r} ${r} 0 0 ${sweep} ${cx} ${cy + r} A ${Math.abs(k)} ${r} 0 0 ${k < 0 ? sweep : 1 - sweep} ${cx} ${cy - r}`}
-        fill={waxing ? lightFill : darkFill}
+        fill={waxing ? MOON.light : MOON.dark}
       />
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E8DFC0" strokeWidth="0.3" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={MOON.rim} strokeWidth="0.3" />
     </g>
   )
 }
 
-/** Bandeau visuel des 8 phases avec curseur de position */
+/** Bandeau visuel des 8 phases — palette jardin */
 function MoonPhaseStrip({ moonPhase, moonInfo }) {
   const waxing = moonPhase <= 0.5
   const direction = waxing ? 'Croissante' : 'Decroissante'
-  const dirIcon = waxing ? 'ti-arrow-right' : 'ti-arrow-left'
-
-  // Position du curseur en pourcentage
+  const dirIcon = waxing ? 'ti-trending-up' : 'ti-trending-down'
   const cursorPct = moonPhase * 100
 
   return (
     <div style={{
-      background: '#1A2332', borderRadius: radius.md,
+      background: colors.sand.bg, borderRadius: radius.md,
       padding: '14px 16px 12px', marginTop: 10,
+      border: `1px solid ${colors.border.soft}`,
     }}>
       {/* Titre + direction */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 10,
+        marginBottom: 12,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <svg width="28" height="28" viewBox="0 0 28 28" role="img" aria-label={moonInfo.label}>
-            <MoonIcon phase={moonPhase} cx={14} cy={14} r={12} glow />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <svg width="30" height="30" viewBox="0 0 30 30" role="img" aria-label={moonInfo.label}>
+            <MoonIcon phase={moonPhase} cx={15} cy={15} r={13} glow />
           </svg>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#FFFDE7' }}>{moonInfo.label}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: colors.text.title }}>{moonInfo.label}</div>
             {moonInfo.description && (
-              <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{moonInfo.description}</div>
+              <div style={{ fontSize: 11, color: colors.sand.text, fontStyle: 'italic' }}>{moonInfo.description}</div>
             )}
           </div>
         </div>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 4,
-          fontSize: 11, color: '#9CA3AF', background: 'rgba(255,255,255,0.06)',
-          padding: '4px 8px', borderRadius: 8,
+          fontSize: 11, color: colors.amber.text, background: colors.amber.bg,
+          padding: '4px 9px', borderRadius: 8, fontWeight: 500,
         }}>
-          <i className={`ti ${dirIcon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+          <i className={`ti ${dirIcon}`} style={{ fontSize: 13 }} aria-hidden="true" />
           {direction}
         </div>
       </div>
 
       {/* Bandeau des 8 phases */}
-      <div style={{ position: 'relative', padding: '0 6px' }}>
-        <svg viewBox="0 0 280 32" style={{ width: '100%', display: 'block' }}>
-          {/* Ligne de fond */}
-          <line x1="10" y1="16" x2="270" y2="16" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" />
+      <div style={{ position: 'relative', padding: '0 4px' }}>
+        <svg viewBox="0 0 280 34" style={{ width: '100%', display: 'block' }}>
+          {/* Ligne de progression */}
+          <line x1="10" y1="17" x2="270" y2="17" stroke={colors.border.soft} strokeWidth="2" strokeLinecap="round" />
+          {/* Portion parcourue */}
+          <line x1="10" y1="17" x2={10 + (cursorPct / 100) * 260} y2="17"
+            stroke={colors.green.leafLight} strokeWidth="2" strokeLinecap="round" />
 
           {/* 8 icones de phase */}
           {PHASE_ICONS.map((p, i) => {
             const px = 10 + (i / 7) * 260
             const dist = Math.abs(moonPhase - p.phase)
             const isCurrent = dist < 0.07 || (p.phase === 0 && moonPhase > 0.93)
-            const moonR = isCurrent ? 7 : 5
-            const opacity = isCurrent ? 1 : 0.45
+            const moonR = isCurrent ? 7.5 : 5
+            const opacity = isCurrent ? 1 : 0.5
             return (
               <g key={i} opacity={opacity}>
-                <MiniMoon phase={p.phase} cx={px} cy={16} r={moonR} />
+                {/* Fond blanc sous chaque lune pour la lisibilite */}
+                <circle cx={px} cy={17} r={moonR + 1.5} fill={colors.sand.bg} />
+                <MiniMoon phase={p.phase} cx={px} cy={17} r={moonR} />
               </g>
             )
           })}
 
           {/* Curseur anime — position actuelle */}
-          <circle cx={10 + (cursorPct / 100) * 260} cy={16} r="10" fill="none"
-            stroke="#FFFDE7" strokeWidth="1.2" opacity="0.5">
-            <animate attributeName="opacity" values="0.5;0.8;0.5" dur="2.5s" repeatCount="indefinite" />
-            <animate attributeName="r" values="10;11.5;10" dur="2.5s" repeatCount="indefinite" />
+          <circle cx={10 + (cursorPct / 100) * 260} cy={17} r="11" fill="none"
+            stroke={colors.green.leaf} strokeWidth="1.5" opacity="0.5">
+            <animate attributeName="opacity" values="0.4;0.75;0.4" dur="2.5s" repeatCount="indefinite" />
+            <animate attributeName="r" values="11;12.5;11" dur="2.5s" repeatCount="indefinite" />
           </circle>
 
           {/* Fleche de direction */}
           {waxing ? (
             <polygon
-              points={`${10 + (cursorPct / 100) * 260 + 14},16 ${10 + (cursorPct / 100) * 260 + 10},13 ${10 + (cursorPct / 100) * 260 + 10},19`}
-              fill="#FFFDE7" opacity="0.4">
+              points={`${10 + (cursorPct / 100) * 260 + 15},17 ${10 + (cursorPct / 100) * 260 + 11},14 ${10 + (cursorPct / 100) * 260 + 11},20`}
+              fill={colors.green.leaf} opacity="0.5">
               <animate attributeName="opacity" values="0.4;0.7;0.4" dur="2s" repeatCount="indefinite" />
             </polygon>
           ) : (
             <polygon
-              points={`${10 + (cursorPct / 100) * 260 - 14},16 ${10 + (cursorPct / 100) * 260 - 10},13 ${10 + (cursorPct / 100) * 260 - 10},19`}
-              fill="#FFFDE7" opacity="0.4">
+              points={`${10 + (cursorPct / 100) * 260 - 15},17 ${10 + (cursorPct / 100) * 260 - 11},14 ${10 + (cursorPct / 100) * 260 - 11},20`}
+              fill={colors.green.leaf} opacity="0.5">
               <animate attributeName="opacity" values="0.4;0.7;0.4" dur="2s" repeatCount="indefinite" />
             </polygon>
           )}
@@ -207,12 +213,12 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
         {/* Labels dessous */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          fontSize: 9, color: '#6B7280', marginTop: 4, padding: '0 4px',
+          fontSize: 9, color: colors.sand.text, marginTop: 4, padding: '0 2px',
         }}>
           <span>Nouvelle</span>
-          <span>Premier Q.</span>
+          <span>1er Q.</span>
           <span>Pleine</span>
-          <span>Dernier Q.</span>
+          <span>Dern. Q.</span>
           <span>Nouvelle</span>
         </div>
       </div>
@@ -330,6 +336,7 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
 /** Mode compact : bandeau horizontal avec lune et planetes */
 function CompactWidget({ planets, moonPhase, moonInfo }) {
   const waxing = moonPhase <= 0.5
+  const cursorPct = moonPhase * 100
 
   return (
     <div>
@@ -341,8 +348,8 @@ function CompactWidget({ planets, moonPhase, moonInfo }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
-              <i className={`ti ${waxing ? 'ti-arrow-right' : 'ti-arrow-left'}`}
-                style={{ fontSize: 11, color: colors.text.faint }} aria-hidden="true" />
+              <i className={`ti ${waxing ? 'ti-trending-up' : 'ti-trending-down'}`}
+                style={{ fontSize: 12, color: colors.amber.text }} aria-hidden="true" />
             </div>
             {moonInfo.description && (
               <div style={{ fontSize: 11, color: colors.text.soft, fontStyle: 'italic' }}>{moonInfo.description}</div>
@@ -365,21 +372,24 @@ function CompactWidget({ planets, moonPhase, moonInfo }) {
 
       {/* Mini strip compact */}
       <div style={{ marginTop: 8, position: 'relative' }}>
-        <svg viewBox="0 0 200 14" style={{ width: '100%', display: 'block' }}>
-          <line x1="4" y1="7" x2="196" y2="7" stroke={colors.border.soft} strokeWidth="1.5" strokeLinecap="round" />
+        <svg viewBox="0 0 200 16" style={{ width: '100%', display: 'block' }}>
+          <line x1="4" y1="8" x2="196" y2="8" stroke={colors.border.soft} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="4" y1="8" x2={4 + (cursorPct / 100) * 192} y2="8"
+            stroke={colors.green.leafLight} strokeWidth="1.5" strokeLinecap="round" />
           {PHASE_ICONS.map((p, i) => {
             const px = 4 + (i / 7) * 192
             const dist = Math.abs(moonPhase - p.phase)
             const isCurrent = dist < 0.07 || (p.phase === 0 && moonPhase > 0.93)
             return (
-              <g key={i} opacity={isCurrent ? 1 : 0.4}>
-                <MiniMoon phase={p.phase} cx={px} cy={7} r={isCurrent ? 5.5 : 4} />
+              <g key={i} opacity={isCurrent ? 1 : 0.45}>
+                <circle cx={px} cy={8} r={isCurrent ? 6 : 4.5} fill={colors.sand.bg} />
+                <MiniMoon phase={p.phase} cx={px} cy={8} r={isCurrent ? 5.5 : 4} />
               </g>
             )
           })}
-          <circle cx={4 + (moonPhase * 100 / 100) * 192} cy={7} r="7.5" fill="none"
+          <circle cx={4 + (cursorPct / 100) * 192} cy={8} r="8" fill="none"
             stroke={colors.green.leaf} strokeWidth="1" opacity="0.5">
-            <animate attributeName="opacity" values="0.5;0.8;0.5" dur="2.5s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.4;0.75;0.4" dur="2.5s" repeatCount="indefinite" />
           </circle>
         </svg>
       </div>
