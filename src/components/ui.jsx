@@ -75,17 +75,23 @@ export function StreakBadge({ children, icon = 'ti-seedling' }) {
   )
 }
 
-export function Segmented({ options, value, onChange }) {
+export function Segmented({ options, value, onChange, variant = 'garden' }) {
+  const isClinical = variant === 'clinical'
+  const trackBg = isClinical ? colors.clinical.surfaceSoft : colors.green.soft
+  const activeBg = isClinical ? colors.clinical.surface : colors.green.surface
+  const activeColor = isClinical ? colors.clinical.ink : colors.text.title
+  const inactiveColor = isClinical ? colors.text.muted : colors.text.soft
+
   return (
-    <div style={{ display: 'flex', background: colors.green.soft, borderRadius: radius.md, padding: 4, marginBottom: 18 }}>
+    <div style={{ display: 'flex', background: trackBg, borderRadius: radius.md, padding: 4, marginBottom: 18 }}>
       {options.map((opt) => {
         const active = opt.value === value
         return (
           <button key={opt.value} onClick={() => onChange(opt.value)}
             style={{
               flex: 1, fontSize: 12.5, padding: '8px 0', border: 'none',
-              background: active ? colors.green.surface : 'transparent',
-              color: active ? colors.text.title : colors.text.soft,
+              background: active ? activeBg : 'transparent',
+              color: active ? activeColor : inactiveColor,
               fontWeight: active ? 600 : 400, borderRadius: radius.sm,
             }}>
             {opt.label}

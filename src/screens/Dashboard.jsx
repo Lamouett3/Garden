@@ -4,7 +4,8 @@ import { Screen, ScreenHeader, StreakBadge, Segmented } from '../components/ui'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
-import { computeStats, buildSeries, withoutBienetre } from '../data/stats'
+import { computeStats, buildSeries, buildDaySeries, filterByPeriod, withoutBienetre, formatHour } from '../data/stats'
+import { conditions } from '../data/conditions'
 
 const BAR_COLOR = {
   calm: colors.green.leaf,
@@ -49,6 +50,39 @@ function LegendDot({ color, children }) {
   )
 }
 
+const INTENSITY_COLOR = (v) => v <= 4 ? colors.green.leaf : v <= 7 ? colors.amber.bar : colors.coral.barStrong
+
+function EpisodeList({ episodes }) {
+  if (episodes.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '24px 10px' }}>
+        <i className="ti ti-calendar-event" style={{ fontSize: 30, color: colors.green.leafLight }} aria-hidden="true" />
+        <p style={{ fontSize: 13, color: colors.text.muted, marginTop: 10 }}>Aucun episode aujourd'hui</p>
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {episodes.map((ep) => {
+        const condLabel = conditions[ep.condition]?.label || ep.condition
+        const hour = ep.hour || formatHour(ep.createdAt)
+        return (
+          <div key={ep.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: colors.sand.bg, borderRadius: radius.md, padding: '10px 12px',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.muted, minWidth: 42 }}>{hour}</span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: INTENSITY_COLOR(ep.intensity || 0), flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: colors.text.body, flex: 1 }}>{condLabel}</span>
+            <span style={{ fontSize: 12, color: colors.text.soft }}>{ep.intensity || 0}/10</span>
+            {ep.duration && <span style={{ fontSize: 11, color: colors.text.faint }}>{ep.duration}</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function StatCard({ label, value, suffix }) {
   return (
     <div style={{ flex: 1, background: colors.sand.bg, borderRadius: radius.md, padding: 12 }}>
@@ -67,8 +101,10 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
 
   const real = withoutBienetre(episodes)
   const streak = currentStreak(episodes)
-  const stats = computeStats(real)
-  const series = buildSeries(real, view)
+  const filtered = filterByPeriod(real, view)
+  const stats = computeStats(filtered)
+  const series = view !== 'j' ? buildSeries(real, view) : null
+  const dayEpisodes = view === 'j' ? buildDaySeries(real) : []
 
   if (real.length === 0) {
     return (
@@ -95,14 +131,20 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
   const chartBlock = (
     <>
       <Segmented
-        options={[{ value: 's', label: 'Semaine' }, { value: 'm', label: 'Mois' }, { value: 'a', label: 'Annee' }]}
+        options={[{ value: 'j', label: 'Jour' }, { value: 's', label: 'Semaine' }, { value: 'm', label: 'Mois' }, { value: 'a', label: 'Annee' }]}
         value={view} onChange={setView} />
-      <BarChart bars={series.bars} labels={series.labels} height={wide ? 150 : 96} />
-      <div style={{ display: 'flex', gap: 14, justifyContent: 'center', fontSize: 11, color: colors.text.soft, margin: '6px 0 0' }}>
-        <LegendDot color={colors.green.leaf}>jour calme</LegendDot>
-        <LegendDot color={colors.amber.bar}>episode leger</LegendDot>
-        <LegendDot color={colors.coral.barStrong}>episode fort</LegendDot>
-      </div>
+      {view === 'j' ? (
+        <EpisodeList episodes={dayEpisodes} />
+      ) : (
+        <>
+          <BarChart bars={series.bars} labels={series.labels} height={wide ? 150 : 96} />
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', fontSize: 11, color: colors.text.soft, margin: '6px 0 0' }}>
+            <LegendDot color={colors.green.leaf}>jour calme</LegendDot>
+            <LegendDot color={colors.amber.bar}>episode leger</LegendDot>
+            <LegendDot color={colors.coral.barStrong}>episode fort</LegendDot>
+          </div>
+        </>
+      )}
     </>
   )
 

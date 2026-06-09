@@ -103,3 +103,125 @@ export function buildSeries(episodes, view) {
   })
   return { bars, labels }
 }
+
+// ---- Nouvelles fonctions temporelles ----
+
+// Extrait l'heure lisible d'un ISO timestamp : "14h32", "9h05"
+export function formatHour(isoString) {
+  const d = new Date(isoString)
+  return `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Filtre les episodes par periode relative a maintenant
+export function filterByPeriod(episodes, period) {
+  const now = new Date()
+  const todayKey = dayKey(now)
+
+  if (period === 'j') {
+    return episodes.filter((e) => dayKey(e.createdAt) === todayKey)
+  }
+
+  if (period === 's') {
+    const monday = new Date(now)
+    const dow = (now.getDay() + 6) % 7
+    monday.setDate(now.getDate() - dow)
+    monday.setHours(0, 0, 0, 0)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    sunday.setHours(23, 59, 59, 999)
+    return episodes.filter((e) => {
+      const d = new Date(e.createdAt)
+      return d >= monday && d <= sunday
+    })
+  }
+
+  if (period === 'm') {
+    const y = now.getFullYear(), m = now.getMonth()
+    return episodes.filter((e) => {
+      const d = new Date(e.createdAt)
+      return d.getFullYear() === y && d.getMonth() === m
+    })
+  }
+
+  // 'a' — annee courante
+  const y = now.getFullYear()
+  return episodes.filter((e) => new Date(e.createdAt).getFullYear() === y)
+}
+
+// Episodes du jour tries par heure, avec champ `hour` ajoute
+export function buildDaySeries(episodes) {
+  const todayKey = dayKey(new Date())
+  return episodes
+    .filter((e) => dayKey(e.createdAt) === todayKey)
+    .map((e) => ({ ...e, hour: formatHour(e.createdAt) }))
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+}
+
+// Grille calendaire pour un mois donne
+// Retourne { weeks: [[cell, ...], ...], monthLabel } ou cell = { day, inMonth, isToday, episodes }
+export function buildCalendarGrid(episodes, year, month) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startOffset = (firstDay.getDay() + 6) % 7 // lundi = 0
+
+  const byDay = {}
+  episodes.forEach((e) => {
+    const d = new Date(e.createdAt)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const k = d.getDate()
+      if (!byDay[k]) byDay[k] = []
+      byDay[k].push({ ...e, hour: formatHour(e.createdAt) })
+    }
+  })
+
+  const now = new Date()
+  const todayDate = now.getFullYear() === year && now.getMonth() === month ? now.getDate() : -1
+
+  const weeks = []
+  let week = []
+  // Jours vides avant le 1er
+  for (let i = 0; i < startOffset; i++) {
+    week.push({ day: null, inMonth: false, isToday: false, episodes: [] })
+  }
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    week.push({ day: d, inMonth: true, isToday: d === todayDate, episodes: byDay[d] || [] })
+    if (week.length === 7) { weeks.push(week); week = [] }
+  }
+  // Remplir la derniere semaine
+  while (week.length > 0 && week.length < 7) {
+    week.push({ day: null, inMonth: false, isToday: false, episodes: [] })
+  }
+  if (week.length) weeks.push(week)
+
+  const months = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+  return { weeks, monthLabel: `${months[month]} ${year}` }
+}
+
+// Label humain pour une periode
+export function periodLabel(period) {
+  const now = new Date()
+  const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+  const months = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+
+  if (period === 'j') {
+    return `${jours[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`
+  }
+
+  if (period === 's') {
+    const monday = new Date(now)
+    const dow = (now.getDay() + 6) % 7
+    monday.setDate(now.getDate() - dow)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    const mLabel = monday.getMonth() === sunday.getMonth()
+      ? months[monday.getMonth()]
+      : `${months[monday.getMonth()]}–${months[sunday.getMonth()]}`
+    return `${monday.getDate()}–${sunday.getDate()} ${mLabel} ${sunday.getFullYear()}`
+  }
+
+  if (period === 'm') {
+    return `${months[now.getMonth()]} ${now.getFullYear()}`
+  }
+
+  return `${now.getFullYear()}`
+}

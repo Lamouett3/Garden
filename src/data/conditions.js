@@ -17,6 +17,16 @@ export const conditions = {
       options: ['Aura', 'Nausee', 'Photophobie'],
     },
   },
+  maux_de_tete: {
+    label: 'Maux de tete',
+    zones: ['tete'],
+    triggers: ['Stress', 'Fatigue', 'Ecran', 'Deshydratation', 'Sommeil', 'Meteo'],
+    treatment: 'Paracetamol',
+    extra: {
+      label: 'Type de douleur',
+      options: ['Tension', 'Pression', 'Pulsatile', 'En etau'],
+    },
+  },
   sii: {
     label: 'SII',
     zones: ['abdomen'],
