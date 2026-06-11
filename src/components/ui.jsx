@@ -28,6 +28,7 @@ export function Screen({ children, bp = 'mobile', wide = false }) {
       padding: bp === 'desktop' ? '32px 36px 36px' : '26px 28px 30px',
       fontFamily: font.family, width: '100%', maxWidth: maxW, margin: '0 auto',
       border: `0.5px solid ${colors.border.soft}`,
+      display: 'flex', flexDirection: 'column',
     }}>
       {children}
     </div>

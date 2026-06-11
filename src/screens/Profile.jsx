@@ -1,5 +1,5 @@
 import { colors, radius } from '../theme/tokens'
-import { Screen, ScreenHeader, Toggle } from '../components/ui'
+import { Screen, ScreenHeader, Toggle, Segmented } from '../components/ui'
 import { useStore } from '../data/store'
 
 export default function Profile({ bp = 'mobile', onLogout }) {
@@ -46,18 +46,45 @@ export default function Profile({ bp = 'mobile', onLogout }) {
           </div>
           <div style={{ fontSize: 12, color: '#6E8174', marginBottom: 13 }}>Pour relier tes episodes a ton cycle</div>
           {profile.cycleOn && (
-            <div style={{ display: 'flex', gap: 10 }}>
-              <MiniField label="Duree cycle">
-                <input type="number" value={profile.cycleLength}
-                  onChange={(e) => updateProfile({ cycleLength: Number(e.target.value) })}
-                  style={inputStyle} /> j
-              </MiniField>
-              <MiniField label="Dernieres regles">
-                <input type="date" value={profile.lastPeriod}
-                  onChange={(e) => updateProfile({ lastPeriod: e.target.value })}
-                  style={{ ...inputStyle, width: '100%' }} />
-              </MiniField>
-            </div>
+            <>
+              <Segmented
+                options={[{ value: 'natural', label: 'Naturel' }, { value: 'pill', label: 'Pilule' }]}
+                value={profile.cycleMode || 'natural'}
+                onChange={(v) => updateProfile({ cycleMode: v })}
+              />
+              {(profile.cycleMode || 'natural') === 'natural' ? (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <MiniField label="Duree cycle">
+                    <input type="number" value={profile.cycleLength}
+                      onChange={(e) => updateProfile({ cycleLength: Number(e.target.value) })}
+                      style={inputStyle} /> j
+                  </MiniField>
+                  <MiniField label="Dernieres regles">
+                    <input type="date" value={profile.lastPeriod}
+                      onChange={(e) => updateProfile({ lastPeriod: e.target.value })}
+                      style={{ ...inputStyle, width: '100%' }} />
+                  </MiniField>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <MiniField label="Jours actifs">
+                    <input type="number" value={profile.pillActiveDays || 21}
+                      onChange={(e) => updateProfile({ pillActiveDays: Number(e.target.value) })}
+                      style={inputStyle} /> j
+                  </MiniField>
+                  <MiniField label="Jours pause">
+                    <input type="number" value={profile.pillBreakDays || 7}
+                      onChange={(e) => updateProfile({ pillBreakDays: Number(e.target.value) })}
+                      style={inputStyle} /> j
+                  </MiniField>
+                  <MiniField label="Debut plaquette">
+                    <input type="date" value={profile.pillPackStart || ''}
+                      onChange={(e) => updateProfile({ pillPackStart: e.target.value })}
+                      style={{ ...inputStyle, width: '100%' }} />
+                  </MiniField>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

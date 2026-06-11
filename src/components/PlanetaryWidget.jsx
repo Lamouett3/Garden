@@ -358,7 +358,7 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
 
   return (
     <div>
-      <svg viewBox="0 0 240 240" style={{ width: '100%', maxWidth: 260, display: 'block', margin: '0 auto' }}
+      <svg viewBox="0 0 240 240" style={{ width: '100%', maxWidth: 300, display: 'block', margin: '0 auto' }}
         role="img" aria-label="Schema du systeme solaire">
         <defs>
           <radialGradient id="sunGlow">

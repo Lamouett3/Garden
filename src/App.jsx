@@ -110,17 +110,24 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
       display: 'flex', flexDirection: 'column',
     }}>
       <header style={{
-        textAlign: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: isTablet ? '28px 24px 0' : '22px 14px 0',
         marginBottom: isTablet ? 18 : 14,
         flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <Logo size={isTablet ? 38 : 32} />
           <span style={{ fontSize: isTablet ? 26 : 24, fontWeight: 700, color: colors.text.title }}>Pousse</span>
         </div>
         {accountName && (
-          <div style={{ fontSize: 12, color: colors.text.soft, marginTop: 4 }}>{accountName}</div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: colors.green.soft, borderRadius: 10,
+            padding: '6px 11px', fontSize: 12, color: colors.text.muted,
+          }}>
+            <i className="ti ti-user" style={{ fontSize: 14 }} aria-hidden="true" />
+            {accountName}
+          </div>
         )}
       </header>
       <div style={{

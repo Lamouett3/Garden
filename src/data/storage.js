@@ -55,6 +55,10 @@ const DEFAULT_PROFILE = {
   cycleOn: true,
   cycleLength: 28,
   lastPeriod: '',
+  cycleMode: 'natural', // 'natural' | 'pill'
+  pillActiveDays: 21,
+  pillBreakDays: 7,
+  pillPackStart: '',
   planetsOn: false, // désactivé par défaut — cf. CLAUDE.md §3
   gardenStartDate: null,
   completedGardens: 0,
@@ -93,10 +97,34 @@ const CYCLE_PHASES = [
 ]
 
 /**
+ * Calcule la phase pilule.
+ * Renvoie { label, icon, color, day, total, phaseDay, phaseTotal } ou null.
+ */
+export function getPillPhase(profile) {
+  if (!profile.cycleOn || !profile.pillPackStart) return null
+  const start = new Date(profile.pillPackStart)
+  if (isNaN(start.getTime())) return null
+  const today = new Date()
+  const diffMs = today.getTime() - start.getTime()
+  if (diffMs < 0) return null
+  const active = profile.pillActiveDays || 21
+  const pause = profile.pillBreakDays || 7
+  const totalLen = active + pause
+  const dayInCycle = (Math.floor(diffMs / 86400000) % totalLen) + 1
+  if (dayInCycle <= active) {
+    return { label: 'Pilule active', icon: 'ti-pill', color: 'green', day: dayInCycle, total: totalLen, phaseDay: dayInCycle, phaseTotal: active }
+  }
+  const pauseDay = dayInCycle - active
+  return { label: 'Pause', icon: 'ti-droplet', color: 'pink', day: dayInCycle, total: totalLen, phaseDay: pauseDay, phaseTotal: pause }
+}
+
+/**
  * Calcule la phase actuelle du cycle menstruel.
  * Renvoie { label, icon, color, day } ou null si les donnees sont absentes.
+ * Si cycleMode === 'pill', delegue a getPillPhase.
  */
 export function getCyclePhase(profile) {
+  if (profile.cycleMode === 'pill') return getPillPhase(profile)
   if (!profile.cycleOn || !profile.lastPeriod) return null
   const start = new Date(profile.lastPeriod)
   if (isNaN(start.getTime())) return null

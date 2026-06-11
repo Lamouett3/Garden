@@ -48,6 +48,73 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
     })
   }
 
+  const gardenProgressText = gardenDayCount === 0
+    ? 'Note un premier episode pour planter ta premiere pousse'
+    : gardenComplete
+      ? 'Ton jardin est magnifique !'
+      : `${gardenDayCount}/${GARDEN_GOAL} jours dans ce cycle`
+
+  const cycleCard = cyclePhase && (
+    <div style={{
+      background: CYCLE_COLORS[cyclePhase.color].bg, borderRadius: radius.md,
+      padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+        background: CYCLE_COLORS[cyclePhase.color].accent,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.9,
+      }}>
+        <i className={`ti ${cyclePhase.icon}`}
+          style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: CYCLE_COLORS[cyclePhase.color].text }}>
+          {cyclePhase.phaseDay != null ? cyclePhase.label : `Phase ${cyclePhase.label.toLowerCase()}`}
+        </div>
+        <div style={{ fontSize: 11, color: CYCLE_COLORS[cyclePhase.color].text, opacity: 0.7 }}>
+          {cyclePhase.phaseDay != null
+            ? `Jour ${cyclePhase.phaseDay}/${cyclePhase.phaseTotal}`
+            : `Jour ${cyclePhase.day}/${cyclePhase.total} du cycle`}
+        </div>
+      </div>
+    </div>
+  )
+
+  const todayCard = loggedToday && (
+    <div style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', display: 'flex', gap: 9, alignItems: 'center' }}>
+      <i className="ti ti-check" style={{ color: colors.green.primaryDark, fontSize: 18 }} aria-hidden="true" />
+      <span style={{ fontSize: 13, color: colors.green.primaryDark }}>Tu as deja pris soin de toi aujourd'hui.</span>
+    </div>
+  )
+
+  const buttonsBlock = (
+    <div style={{ display: 'flex', flexDirection: wide ? 'row' : 'column', gap: 10 }}>
+      <div style={{ flex: 1 }}>
+        <PrimaryButton icon="ti-plus" onClick={onLog}>Noter un episode</PrimaryButton>
+      </div>
+      {!loggedToday && (
+        <button onClick={handleAllGood}
+          style={{
+            flex: 1, border: `1.5px solid ${colors.green.leafLight}`,
+            background: colors.green.soft, color: colors.green.primaryDark, padding: 13, borderRadius: radius.lg,
+            fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+          <i className="ti ti-sun" aria-hidden="true" /> Tout va bien aujourd'hui
+        </button>
+      )}
+      <button onClick={onSeeHistory}
+        style={{
+          flex: 1, border: `1.5px solid ${colors.border.soft}`,
+          background: 'transparent', color: colors.text.muted, padding: 13, borderRadius: radius.lg,
+          fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}>
+        <i className="ti ti-chart-bar" aria-hidden="true" /> Voir mon historique
+      </button>
+    </div>
+  )
+
   return (
     <Screen bp={bp} wide={wide}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -63,7 +130,6 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         </div>
       </div>
 
-      {/* Carte de celebration quand le jardin est complet */}
       {gardenComplete && (
         <div style={{
           background: colors.amber.bg, borderRadius: radius.lg,
@@ -91,84 +157,50 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         </div>
       )}
 
-      <div style={{
-        background: colors.green.bg, borderRadius: radius.lg,
-        padding: wide ? '28px 24px 16px' : '16px 8px 6px', marginBottom: 8,
-      }}>
-        <GrowingGarden days={gardenDayCount} />
-      </div>
-      <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginBottom: 18 }}>
-        {gardenDayCount === 0
-          ? 'Note un premier episode pour planter ta premiere pousse'
-          : gardenComplete
-            ? 'Ton jardin est magnifique !'
-            : `${gardenDayCount}/${GARDEN_GOAL} jours dans ce cycle`}
-      </div>
-
-      {cyclePhase && (
-        <div style={{
-          background: CYCLE_COLORS[cyclePhase.color].bg, borderRadius: radius.md,
-          padding: '11px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10,
-        }}>
+      {wide ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 24, alignItems: 'start', marginBottom: 20 }}>
+            <div>
+              <div style={{ background: colors.green.bg, borderRadius: radius.lg, padding: '24px 20px 12px' }}>
+                <GrowingGarden days={gardenDayCount} />
+              </div>
+              <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 8 }}>
+                {gardenProgressText}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {cycleCard}
+              {todayCard}
+              {profile.planetsOn && <PlanetaryWidget compact />}
+            </div>
+          </div>
+          {buttonsBlock}
+        </>
+      ) : (
+        <>
           <div style={{
-            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            background: CYCLE_COLORS[cyclePhase.color].accent,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.9,
+            background: colors.green.bg, borderRadius: radius.lg,
+            padding: '16px 8px 6px', marginBottom: 8,
           }}>
-            <i className={`ti ${cyclePhase.icon}`}
-              style={{ fontSize: 16, color: '#fff' }} aria-hidden="true" />
+            <GrowingGarden days={gardenDayCount} />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: CYCLE_COLORS[cyclePhase.color].text }}>
-              Phase {cyclePhase.label.toLowerCase()}
-            </div>
-            <div style={{ fontSize: 11, color: CYCLE_COLORS[cyclePhase.color].text, opacity: 0.7 }}>
-              Jour {cyclePhase.day}/{cyclePhase.total} du cycle
-            </div>
+          <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginBottom: 18 }}>
+            {gardenProgressText}
           </div>
-        </div>
+
+          {cycleCard && <div style={{ marginBottom: 12 }}>{cycleCard}</div>}
+          {todayCard && <div style={{ marginBottom: 12 }}>{todayCard}</div>}
+
+          {profile.planetsOn && (
+            <div style={{ marginBottom: 14 }}>
+              <PlanetaryWidget />
+            </div>
+          )}
+
+          <div style={{ flex: 1 }} />
+          {buttonsBlock}
+        </>
       )}
-
-      {loggedToday && (
-        <div style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', marginBottom: 12, display: 'flex', gap: 9, alignItems: 'center' }}>
-          <i className="ti ti-check" style={{ color: colors.green.primaryDark, fontSize: 18 }} aria-hidden="true" />
-          <span style={{ fontSize: 13, color: colors.green.primaryDark }}>Tu as deja pris soin de toi aujourd'hui.</span>
-        </div>
-      )}
-
-      {profile.planetsOn && (
-        <div style={{ marginBottom: 14 }}>
-          <PlanetaryWidget />
-        </div>
-      )}
-
-      <div style={{ flex: 1 }} />
-
-      <div style={{ display: 'flex', flexDirection: wide ? 'row' : 'column', gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <PrimaryButton icon="ti-plus" onClick={onLog}>Noter un episode</PrimaryButton>
-        </div>
-        {!loggedToday && (
-          <button onClick={handleAllGood}
-            style={{
-              flex: 1, border: `1.5px solid ${colors.green.leafLight}`,
-              background: colors.green.soft, color: colors.green.primaryDark, padding: 13, borderRadius: radius.lg,
-              fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-            <i className="ti ti-sun" aria-hidden="true" /> Tout va bien aujourd'hui
-          </button>
-        )}
-        <button onClick={onSeeHistory}
-          style={{
-            flex: 1, border: `1.5px solid ${colors.border.soft}`,
-            background: 'transparent', color: colors.text.muted, padding: 13, borderRadius: radius.lg,
-            fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}>
-          <i className="ti ti-chart-bar" aria-hidden="true" /> Voir mon historique
-        </button>
-      </div>
     </Screen>
   )
 }
