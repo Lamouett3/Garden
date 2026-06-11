@@ -4,6 +4,7 @@
 // Animations : croissance organique, balancement au vent,
 // respiration lumineuse, particules de pollen, papillon,
 // herbe animée, progression bourgeon → bouton → fleur.
+// Floraison progressive dès le jour 3.
 // Props : days (nombre de jours distincts signalés)
 // =============================================================
 
@@ -20,6 +21,8 @@ const C = {
   coral: '#F0A882', coralDeep: '#D98A5A', coralCore: '#C46E3E', coralBud: '#E0A080',
   pollen: '#F7E8A0',
   butterfly: '#B098C8', butterflyWing: '#D4C0E8',
+  bee: '#E9B85E', beeWing: '#F7ECCC',
+  sparkle: '#FFF8DD',
 }
 
 const WIND = [
@@ -48,11 +51,17 @@ const POLLEN_CFG = [
   { x: 170, delay: '5s', dur: '8s', drift: 10 },
   { x: 220, delay: '1.5s', dur: '10s', drift: -8 },
   { x: 85, delay: '4s', dur: '12s', drift: 5 },
+  { x: 140, delay: '6.5s', dur: '10s', drift: -5 },
+  { x: 250, delay: '3s', dur: '9s', drift: 7 },
 ]
 
 const SVG_STYLE = `
 .pg-plant{transform-box:fill-box;transform-origin:center bottom;animation:pgGrow .9s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes pgGrow{0%{transform:scaleY(0);opacity:0}40%{opacity:1}100%{transform:scaleY(1)}}
+.pg-bloom{transform-box:fill-box;transform-origin:center center;animation:pgBloom 1.2s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pgBloom{0%{transform:scale(0);opacity:0}50%{opacity:1}100%{transform:scale(1)}}
+.pg-fadein{animation:pgFadeIn 1.5s ease both}
+@keyframes pgFadeIn{0%{opacity:0}100%{opacity:1}}
 `
 
 // --- Helpers ---
@@ -87,13 +96,20 @@ function Leaf({ y, size = 1, side = 'left', color = C.leafDark, wDur = '4.2s', w
   )
 }
 
-function Petals({ cy, r, pr, fill, inner, count = 5 }) {
+function Petals({ cy, r, pr, fill, inner, count = 5, breathe = false }) {
   const out = []
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 - Math.PI / 2
     const px = r * Math.cos(a), py = cy + r * Math.sin(a)
-    out.push(<ellipse key={`o${i}`} cx={px} cy={py} rx={pr} ry={pr * 1.4}
-      fill={fill} transform={`rotate(${(i / count) * 360} ${px} ${py})`} />)
+    out.push(
+      <ellipse key={`o${i}`} cx={px} cy={py} rx={pr} ry={pr * 1.4}
+        fill={fill} transform={`rotate(${(i / count) * 360} ${px} ${py})`}>
+        {breathe && (
+          <animate attributeName="rx" values={`${pr};${pr * 1.08};${pr}`}
+            dur={`${3 + (i % 3) * 0.5}s`} begin={`${i * 0.2}s`} repeatCount="indefinite" />
+        )}
+      </ellipse>
+    )
   }
   if (inner) {
     const ic = Math.max(count - 1, 3)
@@ -117,15 +133,32 @@ function Glow({ cy, r, color, dur = '3.5s' }) {
 }
 
 function Sprout({ h }) {
-  return <ellipse cx={0} cy={-h + 0.5} rx={1.8} ry={2.5} fill={C.leafDark} opacity="0.8" />
+  return (
+    <g>
+      <ellipse cx={0} cy={-h + 0.5} rx={1.8} ry={2.5} fill={C.leafDark} opacity="0.8">
+        <animate attributeName="ry" values="2.5;3;2.5" dur="2.5s" repeatCount="indefinite" />
+      </ellipse>
+    </g>
+  )
 }
 
 function Bud({ h, color }) {
   return (
     <g>
-      <ellipse cx={0} cy={-h - 2} rx={2.2} ry={3.2} fill={color} />
+      <ellipse cx={0} cy={-h - 2} rx={2.2} ry={3.2} fill={color}>
+        <animate attributeName="ry" values="3.2;3.6;3.2" dur="3s" repeatCount="indefinite" />
+      </ellipse>
       <path d={`M-1.5 ${-h - 0.5}Q0 ${-h - 4} 1.5 ${-h - 0.5}`} fill={C.leafDark} opacity="0.6" />
     </g>
+  )
+}
+
+function FlowerSparkle({ cx, cy, delay = '0s' }) {
+  return (
+    <circle cx={cx} cy={cy} r={0.8} fill={C.sparkle} opacity="0">
+      <animate attributeName="opacity" values="0;0.9;0" dur="2.5s" begin={delay} repeatCount="indefinite" />
+      <animate attributeName="r" values="0.4;1.2;0.4" dur="2.5s" begin={delay} repeatCount="indefinite" />
+    </circle>
   )
 }
 
@@ -142,13 +175,15 @@ function Rose({ m, h }) {
         <Leaf y={-h + 14} size={0.7} side="right" color={C.leafLight} wDur="4.8s" wDelay="0.8s" />
       </>}
       {m === 1 && <Bud h={h} color={C.pinkBud} />}
-      {m >= 2 && <>
+      {m >= 2 && <g className="pg-bloom">
         <Glow cy={t} r={7} color={C.pink} />
-        <Petals cy={t} r={3.5} pr={2.8} fill={C.pink} inner={C.pinkDeep} count={5} />
-        <circle cx={0} cy={t} r={2} fill={C.pinkCore} />
-        <circle cx={-0.8} cy={t - 0.5} r={0.5} fill="#D4A03E" opacity="0.6" />
-        <circle cx={0.7} cy={t + 0.4} r={0.4} fill="#D4A03E" opacity="0.5" />
-      </>}
+        <Petals cy={t} r={3.5} pr={2.8} fill={C.pink} inner={C.pinkDeep} count={5} breathe />
+        <circle cx={0} cy={t} r={2} fill={C.pinkCore}>
+          <animate attributeName="r" values="2;2.3;2" dur="3s" repeatCount="indefinite" />
+        </circle>
+        <FlowerSparkle cx={-3} cy={t - 3} delay="0.5s" />
+        <FlowerSparkle cx={3} cy={t - 2} delay="1.8s" />
+      </g>}
     </>
   )
 }
@@ -164,14 +199,16 @@ function Lavender({ m, h }) {
         <Leaf y={t + 16} size={0.65} side="left" color={C.leafLight} wDur="5s" wDelay="0.9s" />
       </>}
       {m === 1 && <Bud h={h} color={C.lavenderBud} />}
-      {m >= 2 && <>
+      {m >= 2 && <g className="pg-bloom">
         <Glow cy={t - 5} r={6} color={C.lavender} dur="4s" />
-        <ellipse cx={0} cy={t - 1} rx={2.8} ry={2.2} fill={C.lavender} />
-        <ellipse cx={0.3} cy={t - 4} rx={2.4} ry={1.9} fill={C.lavenderDeep} />
-        <ellipse cx={-0.2} cy={t - 7} rx={2} ry={1.6} fill={C.lavender} />
-        <ellipse cx={0.1} cy={t - 9.5} rx={1.5} ry={1.3} fill={C.lavenderDeep} />
-        <ellipse cx={0} cy={t - 11.5} rx={1} ry={0.9} fill={C.lavender} />
-      </>}
+        {[0, -3, -6, -8.5, -10.5].map((dy, i) => (
+          <ellipse key={i} cx={i % 2 === 0 ? 0 : 0.3} cy={t + dy} rx={2.8 - i * 0.35} ry={2.2 - i * 0.25}
+            fill={i % 2 === 0 ? C.lavender : C.lavenderDeep}>
+            <animate attributeName="rx" values={`${2.8 - i * 0.35};${3 - i * 0.35};${2.8 - i * 0.35}`}
+              dur={`${3 + i * 0.3}s`} begin={`${i * 0.15}s`} repeatCount="indefinite" />
+          </ellipse>
+        ))}
+      </g>}
     </>
   )
 }
@@ -184,13 +221,16 @@ function Sunflower({ m, h }) {
       {m === 0 && <Sprout h={h} />}
       {m >= 1 && <Leaf y={-h + 10} size={1.1} side="right" color={C.leafLight} wDur="4s" wDelay="0.6s" />}
       {m === 1 && <Bud h={h} color={C.yellowBud} />}
-      {m >= 2 && <>
+      {m >= 2 && <g className="pg-bloom">
         <Glow cy={t} r={9} color={C.yellow} dur="3s" />
-        <Petals cy={t} r={4.2} pr={2.6} fill={C.yellow} inner={C.yellowDeep} count={8} />
-        <circle cx={0} cy={t} r={3.2} fill={C.yellowCore} />
-        <circle cx={-0.8} cy={t - 0.5} r={0.5} fill="#B8800A" opacity="0.4" />
-        <circle cx={0.6} cy={t + 0.6} r={0.4} fill="#B8800A" opacity="0.3" />
-      </>}
+        <Petals cy={t} r={4.2} pr={2.6} fill={C.yellow} inner={C.yellowDeep} count={8} breathe />
+        <circle cx={0} cy={t} r={3.2} fill={C.yellowCore}>
+          <animate attributeName="r" values="3.2;3.5;3.2" dur="4s" repeatCount="indefinite" />
+        </circle>
+        <FlowerSparkle cx={-4} cy={t - 4} delay="0.3s" />
+        <FlowerSparkle cx={4} cy={t + 1} delay="2s" />
+        <FlowerSparkle cx={0} cy={t - 5} delay="1.2s" />
+      </g>}
     </>
   )
 }
@@ -203,15 +243,19 @@ function Tulip({ m, h }) {
       {m === 0 && <Sprout h={h} />}
       {m >= 1 && <Leaf y={t + 12} size={0.9} side="left" wDur="3.8s" wDelay="0.2s" />}
       {m === 1 && <Bud h={h} color={C.tulipBud} />}
-      {m >= 2 && <>
+      {m >= 2 && <g className="pg-bloom">
         <Glow cy={t - 3} r={8} color={C.tulipRed} dur="3.8s" />
         <ellipse cx={-3.5} cy={t - 3} rx={3.8} ry={5.8} fill={C.tulipRed}
-          transform={`rotate(12 -3.5 ${t - 3})`} />
+          transform={`rotate(12 -3.5 ${t - 3})`}>
+          <animate attributeName="ry" values="5.8;6.2;5.8" dur="3.5s" repeatCount="indefinite" />
+        </ellipse>
         <ellipse cx={3.5} cy={t - 3} rx={3.8} ry={5.8} fill={C.tulipRedDeep}
-          transform={`rotate(-12 3.5 ${t - 3})`} />
+          transform={`rotate(-12 3.5 ${t - 3})`}>
+          <animate attributeName="ry" values="5.8;6.2;5.8" dur="3.5s" begin="0.3s" repeatCount="indefinite" />
+        </ellipse>
         <ellipse cx={0} cy={t - 4} rx={3} ry={5.2} fill={C.tulipRed} />
         <ellipse cx={-1.5} cy={t - 5} rx={1} ry={2} fill="#fff" opacity="0.12" />
-      </>}
+      </g>}
     </>
   )
 }
@@ -227,12 +271,15 @@ function Daisy({ m, h }) {
         <Leaf y={-h + 15} size={0.6} side="left" color={C.leafLight} wDur="4.7s" wDelay="1s" />
       </>}
       {m === 1 && <Bud h={h} color={C.daisyBud} />}
-      {m >= 2 && <>
+      {m >= 2 && <g className="pg-bloom">
         <Glow cy={t} r={7.5} color={C.daisy} dur="4.2s" />
-        <Petals cy={t} r={4} pr={2.6} fill={C.daisy} count={7} />
-        <circle cx={0} cy={t} r={2.5} fill={C.daisyCore} />
-        <circle cx={0} cy={t} r={1.5} fill="#D4A03E" opacity="0.4" />
-      </>}
+        <Petals cy={t} r={4} pr={2.6} fill={C.daisy} count={7} breathe />
+        <circle cx={0} cy={t} r={2.5} fill={C.daisyCore}>
+          <animate attributeName="r" values="2.5;2.8;2.5" dur="3.5s" repeatCount="indefinite" />
+        </circle>
+        <FlowerSparkle cx={-3.5} cy={t - 3} delay="1s" />
+        <FlowerSparkle cx={2.5} cy={t + 2} delay="2.3s" />
+      </g>}
     </>
   )
 }
@@ -245,11 +292,14 @@ function CoralF({ m, h }) {
       {m === 0 && <Sprout h={h} />}
       {m >= 1 && <Leaf y={-h + 8} size={0.9} side="left" color={C.leafLight} wDur="4.4s" wDelay="0.7s" />}
       {m === 1 && <Bud h={h} color={C.coralBud} />}
-      {m >= 2 && <>
+      {m >= 2 && <g className="pg-bloom">
         <Glow cy={t} r={7} color={C.coral} dur="3.2s" />
-        <Petals cy={t} r={3.4} pr={2.7} fill={C.coral} inner={C.coralDeep} count={6} />
-        <circle cx={0} cy={t} r={2} fill={C.coralCore} />
-      </>}
+        <Petals cy={t} r={3.4} pr={2.7} fill={C.coral} inner={C.coralDeep} count={6} breathe />
+        <circle cx={0} cy={t} r={2} fill={C.coralCore}>
+          <animate attributeName="r" values="2;2.3;2" dur="3s" repeatCount="indefinite" />
+        </circle>
+        <FlowerSparkle cx={3} cy={t - 2.5} delay="0.8s" />
+      </g>}
     </>
   )
 }
@@ -257,6 +307,8 @@ function CoralF({ m, h }) {
 const VARIANTS = [Rose, Lavender, Sunflower, Tulip, Daisy, CoralF]
 
 // --- Plante (wind + grow-in) ---
+// Maturity per plant: progressive blooming from day 3
+// plant index 0 (oldest) matures fastest, newest stays sprout/bud
 
 function Plant({ x, index, maturity }) {
   const V = VARIANTS[index % VARIANTS.length]
@@ -333,11 +385,54 @@ function Butterfly() {
   )
 }
 
+function Bee() {
+  return (
+    <g opacity="0.55" className="pg-fadein" style={{ animationDelay: '2s' }}>
+      <animateMotion
+        path="M200,50C160,30 100,60 60,38C100,25 160,55 200,50"
+        dur="14s" rotate="auto" repeatCount="indefinite" />
+      <ellipse cx="0" cy="0" rx="1.8" ry="1.2" fill={C.bee} />
+      <line x1="-0.6" y1="0" x2="0.6" y2="0" stroke="#2E4034" strokeWidth="0.4" />
+      <ellipse cx="-1" cy="-1.2" rx="1.4" ry="0.7" fill={C.beeWing} opacity="0.5"
+        transform="rotate(-20 -1 -1.2)">
+        <animateTransform attributeName="transform" type="rotate"
+          values="-20 -1 -1.2;10 -1 -1.2;-20 -1 -1.2" dur="0.15s" repeatCount="indefinite" />
+      </ellipse>
+      <ellipse cx="1" cy="-1.2" rx="1.4" ry="0.7" fill={C.beeWing} opacity="0.5"
+        transform="rotate(20 1 -1.2)">
+        <animateTransform attributeName="transform" type="rotate"
+          values="20 1 -1.2;-10 1 -1.2;20 1 -1.2" dur="0.15s" repeatCount="indefinite" />
+      </ellipse>
+    </g>
+  )
+}
+
 // --- Composant principal ---
 
+/**
+ * Maturity per plant: progressive blooming.
+ * - days < 3:  all sprouts (m=0)
+ * - days 3-4:  oldest 1-2 plants get buds (m=1), rest sprouts
+ * - days 5-6:  oldest plants bloom (m=2), middle buds, newest sprouts
+ * - days >= 7: all bloom (m=2)
+ */
+function getPlantMaturity(plantIndex, plantCount, days) {
+  if (days >= 7) return 2
+  if (days < 3) return 0
+  // Age: 0 = oldest, plantCount-1 = newest
+  const age = plantCount - 1 - plantIndex
+  // How many "maturity points" to distribute
+  const progress = days - 2 // 1 at day 3, 2 at day 4, etc.
+  // Oldest plants bloom first: each plant needs ~1.5 progress points per maturity level
+  const threshold = age * 1.2
+  if (progress >= threshold + 2.5) return 2
+  if (progress >= threshold + 1) return 1
+  return 0
+}
+
 export default function GrowingGarden({ days = 0 }) {
-  const maturity = days >= 7 ? 2 : days >= 3 ? 1 : 0
   const plantCount = Math.min(days, 7)
+  const hasFlowers = days >= 3
   const positions = Array.from({ length: plantCount }, (_, i) => {
     const spread = 240 / Math.max(plantCount, 1)
     return 35 + i * spread + ((i % 2) * 6 - 3)
@@ -354,11 +449,12 @@ export default function GrowingGarden({ days = 0 }) {
       {plantCount > 0 && <GrassTufts />}
 
       {positions.map((x, i) => (
-        <Plant key={i} x={x} index={i} maturity={maturity} />
+        <Plant key={i} x={x} index={i} maturity={getPlantMaturity(i, plantCount, days)} />
       ))}
 
-      {maturity >= 2 && <PollenParticles />}
-      {maturity >= 2 && <Butterfly />}
+      {hasFlowers && <PollenParticles />}
+      {hasFlowers && <Butterfly />}
+      {days >= 5 && <Bee />}
 
       {days === 0 && (
         <>

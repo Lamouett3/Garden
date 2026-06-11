@@ -20,14 +20,15 @@ const TABS = [
 
 function Logo({ size = 34 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label="Logo Pousse">
-      <circle cx="50" cy="50" r="50" fill="#E7EFE8" />
-      <path d="M50 80 C50 64 50 52 50 40" stroke="#5A8262" strokeWidth="5" strokeLinecap="round" fill="none" />
-      <path d="M50 54 C50 41 42 31 27 29 C29 43 37 52 50 54 Z" fill="#7FB089" />
-      <path d="M50 47 C50 34 58 23 73 21 C71 36 63 45 50 47 Z" fill="#9FC4A4" />
-      <path d="M50 40 C50 30 50 24 50 19" stroke="#5A8262" strokeWidth="5" strokeLinecap="round" fill="none" />
-      <circle cx="50" cy="15" r="9" fill="#F3C8D2" />
-      <circle cx="50" cy="15" r="3.5" fill="#E9B85E" />
+    <svg width={size} height={size} viewBox="0 0 120 120" role="img" aria-label="Logo Pousse">
+      <circle cx="60" cy="60" r="58" fill="#EAF1EC" />
+      <path d="M60 92 C60 78 59 66 56 56" stroke="#3F6B49" strokeWidth="6" strokeLinecap="round" fill="none" />
+      <path d="M56 60 C50 48 38 44 26 45 C28 60 40 66 54 63 C55 62 56 61 56 60 Z" fill="#7FB089" />
+      <path d="M56 60 C50 50 40 47 30 47 C34 57 43 61 53 60 Z" fill="#9FC4A4" />
+      <path d="M58 52 C60 38 72 30 86 30 C85 46 73 54 59 53 C58 53 58 52 58 52 Z" fill="#5A8262" />
+      <path d="M58 52 C61 40 71 34 82 33 C80 44 71 50 59 50 Z" fill="#7FB089" />
+      <circle cx="60" cy="40" r="11" fill="#F3C8D2" />
+      <circle cx="60" cy="40" r="4.5" fill="#E9B85E" />
     </svg>
   )
 }

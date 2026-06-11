@@ -112,19 +112,31 @@ export function formatHour(isoString) {
   return `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-// Filtre les episodes par periode relative a maintenant
-export function filterByPeriod(episodes, period) {
+// Calcule la date de reference decalee de `offset` periodes
+export function getRefDate(period, offset = 0) {
   const now = new Date()
-  const todayKey = dayKey(now)
+  if (offset === 0) return now
+  const ref = new Date(now)
+  if (period === 'j') ref.setDate(ref.getDate() + offset)
+  else if (period === 's') ref.setDate(ref.getDate() + offset * 7)
+  else if (period === 'm') ref.setMonth(ref.getMonth() + offset)
+  else ref.setFullYear(ref.getFullYear() + offset)
+  return ref
+}
+
+// Filtre les episodes par periode relative a maintenant, decalee de `offset`
+export function filterByPeriod(episodes, period, offset = 0) {
+  const ref = getRefDate(period, offset)
 
   if (period === 'j') {
-    return episodes.filter((e) => dayKey(e.createdAt) === todayKey)
+    const refKey = dayKey(ref)
+    return episodes.filter((e) => dayKey(e.createdAt) === refKey)
   }
 
   if (period === 's') {
-    const monday = new Date(now)
-    const dow = (now.getDay() + 6) % 7
-    monday.setDate(now.getDate() - dow)
+    const monday = new Date(ref)
+    const dow = (ref.getDay() + 6) % 7
+    monday.setDate(ref.getDate() - dow)
     monday.setHours(0, 0, 0, 0)
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
@@ -136,15 +148,15 @@ export function filterByPeriod(episodes, period) {
   }
 
   if (period === 'm') {
-    const y = now.getFullYear(), m = now.getMonth()
+    const y = ref.getFullYear(), m = ref.getMonth()
     return episodes.filter((e) => {
       const d = new Date(e.createdAt)
       return d.getFullYear() === y && d.getMonth() === m
     })
   }
 
-  // 'a' — annee courante
-  const y = now.getFullYear()
+  // 'a'
+  const y = ref.getFullYear()
   return episodes.filter((e) => new Date(e.createdAt).getFullYear() === y)
 }
 
@@ -197,20 +209,20 @@ export function buildCalendarGrid(episodes, year, month) {
   return { weeks, monthLabel: `${months[month]} ${year}` }
 }
 
-// Label humain pour une periode
-export function periodLabel(period) {
-  const now = new Date()
+// Label humain pour une periode, decalee de `offset`
+export function periodLabel(period, offset = 0) {
+  const ref = getRefDate(period, offset)
   const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
   const months = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
 
   if (period === 'j') {
-    return `${jours[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`
+    return `${jours[ref.getDay()]} ${ref.getDate()} ${months[ref.getMonth()]} ${ref.getFullYear()}`
   }
 
   if (period === 's') {
-    const monday = new Date(now)
-    const dow = (now.getDay() + 6) % 7
-    monday.setDate(now.getDate() - dow)
+    const monday = new Date(ref)
+    const dow = (ref.getDay() + 6) % 7
+    monday.setDate(ref.getDate() - dow)
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
     const mLabel = monday.getMonth() === sunday.getMonth()
@@ -220,8 +232,8 @@ export function periodLabel(period) {
   }
 
   if (period === 'm') {
-    return `${months[now.getMonth()]} ${now.getFullYear()}`
+    return `${months[ref.getMonth()]} ${ref.getFullYear()}`
   }
 
-  return `${now.getFullYear()}`
+  return `${ref.getFullYear()}`
 }
