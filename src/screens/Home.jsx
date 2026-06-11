@@ -176,7 +176,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {cycleCard}
               {todayCard}
-              {profile.planetsOn && <PlanetaryWidget compact />}
+              {(profile.moonOn || profile.planetsOn) && <PlanetaryWidget compact showMoon={profile.moonOn} showPlanets={profile.planetsOn} />}
             </div>
           </div>
           {buttonsBlock}
@@ -196,9 +196,9 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           {cycleCard && <div style={{ marginBottom: 12 }}>{cycleCard}</div>}
           {todayCard && <div style={{ marginBottom: 12 }}>{todayCard}</div>}
 
-          {profile.planetsOn && (
+          {(profile.moonOn || profile.planetsOn) && (
             <div style={{ marginBottom: 14 }}>
-              <PlanetaryWidget />
+              <PlanetaryWidget showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
             </div>
           )}
 

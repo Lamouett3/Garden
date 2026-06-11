@@ -6,6 +6,20 @@ import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
 import { computeStats, buildSeries, buildDaySeries, filterByPeriod, periodLabel, withoutBienetre, formatHour } from '../data/stats'
 import { conditions } from '../data/conditions'
+import { getMoonPhase, getMoonPhaseName, getPlanetPositions } from '../data/astro'
+
+const ZODIAC = [
+  'Bel', 'Tau', 'Gem', 'Can', 'Lio', 'Vie',
+  'Bal', 'Sco', 'Sag', 'Cap', 'Ver', 'Poi',
+]
+function zodiacAbbr(angle) {
+  return ZODIAC[Math.floor(((angle % 360) + 360) % 360 / 30)]
+}
+
+const PLANET_DOT_COLORS = {
+  mercure: '#B8AFA0', venus: '#C4963C', mars: '#D06050',
+  jupiter: '#9A7E50', saturne: '#C4B17C',
+}
 
 const BAR_COLOR = {
   calm: colors.green.leaf,
@@ -53,7 +67,7 @@ function LegendDot({ color, children }) {
 
 const INTENSITY_COLOR = (v) => v <= 4 ? colors.green.leaf : v <= 7 ? colors.amber.bar : colors.coral.barStrong
 
-function EpisodeList({ episodes }) {
+function EpisodeList({ episodes, showMoon, showPlanets }) {
   if (episodes.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '24px 10px' }}>
@@ -67,16 +81,44 @@ function EpisodeList({ episodes }) {
       {episodes.map((ep, i) => {
         const condLabel = conditions[ep.condition]?.label || ep.condition
         const hour = ep.hour || formatHour(ep.createdAt)
+        const d = new Date(ep.createdAt)
+        const moonInfo = showMoon ? getMoonPhaseName(d) : null
+        const planets = showPlanets ? getPlanetPositions(d).filter((p) => p.id !== 'terre') : null
         return (
           <div key={ep.id} className={`anim-fadeInUp anim-d${Math.min(i + 1, 8)}`} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
             background: colors.sand.bg, borderRadius: radius.md, padding: '10px 12px',
           }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.muted, minWidth: 42 }}>{hour}</span>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: INTENSITY_COLOR(ep.intensity || 0), flexShrink: 0 }} />
-            <span style={{ fontSize: 13, color: colors.text.body, flex: 1 }}>{condLabel}</span>
-            <span style={{ fontSize: 12, color: colors.text.soft }}>{ep.intensity || 0}/10</span>
-            {ep.duration && <span style={{ fontSize: 11, color: colors.text.faint }}>{ep.duration}</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.muted, minWidth: 42 }}>{hour}</span>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: INTENSITY_COLOR(ep.intensity || 0), flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: colors.text.body, flex: 1 }}>{condLabel}</span>
+              <span style={{ fontSize: 12, color: colors.text.soft }}>{ep.intensity || 0}/10</span>
+              {ep.duration && <span style={{ fontSize: 11, color: colors.text.faint }}>{ep.duration}</span>}
+            </div>
+            {(moonInfo || planets) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, marginLeft: 52, flexWrap: 'wrap' }}>
+                {moonInfo && (
+                  <span style={{
+                    fontSize: 10, padding: '2px 7px', borderRadius: 5,
+                    background: '#F0ECE0', color: '#7A7060',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <i className="ti ti-moon" style={{ fontSize: 10 }} aria-hidden="true" />
+                    {moonInfo.label}
+                  </span>
+                )}
+                {planets && planets.map((p) => (
+                  <span key={p.id} style={{
+                    fontSize: 9, padding: '2px 5px', borderRadius: 4,
+                    background: colors.green.soft, color: colors.text.soft,
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                  }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: PLANET_DOT_COLORS[p.id] || colors.text.faint }} />
+                    {zodiacAbbr(p.angle)}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )
       })}
@@ -171,7 +213,7 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
       </div>
 
       {view === 'j' ? (
-        <EpisodeList episodes={dayEpisodes} />
+        <EpisodeList episodes={dayEpisodes} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
       ) : (
         <>
           <BarChart bars={series.bars} labels={series.labels} height={wide ? 150 : 96} />
@@ -210,8 +252,8 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
           <div>{chartBlock}</div>
           <div>
             {statsBlock}
-            {profile.planetsOn && (
-              <div style={{ marginTop: 14 }}><PlanetaryWidget compact /></div>
+            {(profile.moonOn || profile.planetsOn) && (
+              <div style={{ marginTop: 14 }}><PlanetaryWidget compact showMoon={profile.moonOn} showPlanets={profile.planetsOn} /></div>
             )}
           </div>
         </div>
@@ -219,8 +261,8 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
         <>
           <div style={{ marginBottom: 18 }}>{chartBlock}</div>
           {statsBlock}
-          {profile.planetsOn && (
-            <div style={{ marginTop: 14 }}><PlanetaryWidget compact /></div>
+          {(profile.moonOn || profile.planetsOn) && (
+            <div style={{ marginTop: 14 }}><PlanetaryWidget compact showMoon={profile.moonOn} showPlanets={profile.planetsOn} /></div>
           )}
         </>
       )}

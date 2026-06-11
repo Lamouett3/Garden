@@ -89,36 +89,55 @@ export default function Profile({ bp = 'mobile', onLogout }) {
         </div>
       )}
 
-      <Label style={{ marginTop: 18 }}>Options</Label>
+      <Label style={{ marginTop: 18 }}>Reperes personnels</Label>
 
-      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 14 }}>
+      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: colors.text.body, display: 'flex', alignItems: 'center', gap: 7 }}>
-              <i className="ti ti-moon" aria-hidden="true" /> Reperes lunaires &amp; planetaires
+              <i className="ti ti-moon" aria-hidden="true" /> Reperes lunaires
             </div>
             <div style={{ fontSize: 12, color: colors.sand.text, marginTop: 4, lineHeight: 1.5 }}>
-              Affiche la phase lunaire et les positions planetaires a cote de tes journees.
+              Affiche la phase lunaire actuelle et le cycle des phases.
+            </div>
+          </div>
+          <button onClick={() => updateProfile({ moonOn: !profile.moonOn })}
+            aria-label="Activer les reperes lunaires"
+            style={{ border: 'none', background: 'transparent', padding: 0, marginTop: 2 }}>
+            <Toggle on={profile.moonOn} />
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: colors.text.body, display: 'flex', alignItems: 'center', gap: 7 }}>
+              <i className="ti ti-planet" aria-hidden="true" /> Reperes planetaires
+            </div>
+            <div style={{ fontSize: 12, color: colors.sand.text, marginTop: 4, lineHeight: 1.5 }}>
+              Affiche les positions des planetes dans le systeme solaire.
             </div>
           </div>
           <button onClick={() => updateProfile({ planetsOn: !profile.planetsOn })}
-            aria-label="Activer les reperes lunaires et planetaires"
+            aria-label="Activer les reperes planetaires"
             style={{ border: 'none', background: 'transparent', padding: 0, marginTop: 2 }}>
             <Toggle on={profile.planetsOn} />
           </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 11, background: colors.amber.bg, borderRadius: radius.sm, padding: '8px 10px' }}>
-          <i className="ti ti-info-circle" style={{ color: colors.amber.text, fontSize: 15 }} aria-hidden="true" />
-          <span style={{ fontSize: 11, color: colors.amber.text, lineHeight: 1.45 }}>
-            Repere personnel sans valeur medicale. N'apparait pas dans le rapport medecin.
-          </span>
-        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: colors.amber.bg, borderRadius: radius.sm, padding: '8px 10px', marginBottom: 14 }}>
+        <i className="ti ti-info-circle" style={{ color: colors.amber.text, fontSize: 15 }} aria-hidden="true" />
+        <span style={{ fontSize: 11, color: colors.amber.text, lineHeight: 1.45 }}>
+          Reperes personnels sans valeur medicale. N'apparaissent pas dans le rapport medecin.
+        </span>
       </div>
 
       <div style={{ flex: 1 }} />
 
       <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 6, marginBottom: 16 }}>
-        Desactive par defaut {'\u00b7'} activable quand tu veux
+        Desactives par defaut {'\u00b7'} activables quand tu veux
       </p>
 
       {onLogout && (

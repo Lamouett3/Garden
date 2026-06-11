@@ -5,8 +5,12 @@
 // respiration lumineuse, particules de pollen, papillon,
 // herbe animée, progression bourgeon → bouton → fleur.
 // Floraison progressive dès le jour 3.
+// Décor météo dynamique via géolocalisation + Open-Meteo.
 // Props : days (nombre de jours distincts signalés)
 // =============================================================
+
+import { useState, useEffect } from 'react'
+import { fetchWeather } from '../data/weather'
 
 const C = {
   stem: '#86A98B', stemDark: '#6E8F74',
@@ -26,23 +30,23 @@ const C = {
 }
 
 const WIND = [
-  { dur: '3.2s', delay: '0s', angle: 2.8 },
-  { dur: '3.8s', delay: '0.4s', angle: 3.2 },
-  { dur: '3.0s', delay: '0.9s', angle: 2.2 },
-  { dur: '3.5s', delay: '0.2s', angle: 3.5 },
-  { dur: '4.0s', delay: '0.7s', angle: 2.5 },
-  { dur: '3.3s', delay: '1.1s', angle: 3 },
-  { dur: '3.6s', delay: '0.3s', angle: 2 },
+  { dur: '3.2s', delay: '0s', angle: 6 },
+  { dur: '3.8s', delay: '0.4s', angle: 7 },
+  { dur: '3.0s', delay: '0.9s', angle: 5 },
+  { dur: '3.5s', delay: '0.2s', angle: 7.5 },
+  { dur: '4.0s', delay: '0.7s', angle: 5.5 },
+  { dur: '3.3s', delay: '1.1s', angle: 6.5 },
+  { dur: '3.6s', delay: '0.3s', angle: 4.5 },
 ]
 
 const GRASS_POS = [
-  { x: 15, h: 5, l: -1.2 }, { x: 28, h: 3.5, l: 0.8 },
-  { x: 52, h: 4, l: -0.6 }, { x: 78, h: 5.5, l: 1 },
-  { x: 105, h: 3.8, l: -1 }, { x: 128, h: 4.5, l: 0.7 },
-  { x: 155, h: 5, l: -0.9 }, { x: 175, h: 3.5, l: 1.3 },
-  { x: 200, h: 4.2, l: -0.5 }, { x: 225, h: 5, l: 0.8 },
-  { x: 248, h: 3.8, l: -1.1 }, { x: 270, h: 4.5, l: 0.6 },
-  { x: 285, h: 3.5, l: -0.8 },
+  { x: 15, h: 6, l: -2.2 }, { x: 28, h: 4.5, l: 1.5 },
+  { x: 52, h: 5, l: -1.2 }, { x: 78, h: 6.5, l: 1.8 },
+  { x: 105, h: 5, l: -1.8 }, { x: 128, h: 5.5, l: 1.3 },
+  { x: 155, h: 6, l: -1.6 }, { x: 175, h: 4.5, l: 2 },
+  { x: 200, h: 5.5, l: -1 }, { x: 225, h: 6, l: 1.5 },
+  { x: 248, h: 5, l: -2 }, { x: 270, h: 5.5, l: 1.2 },
+  { x: 285, h: 4.5, l: -1.5 },
 ]
 
 const POLLEN_CFG = [
@@ -312,10 +316,10 @@ const VARIANTS = [Rose, Lavender, Sunflower, Tulip, Daisy, CoralF]
 
 function Plant({ x, index, maturity }) {
   const V = VARIANTS[index % VARIANTS.length]
-  const h = maturity === 0 ? 14 : maturity === 1 ? 22 : 30
+  const h = maturity === 0 ? 18 : maturity === 1 ? 30 : 42
   const wind = WIND[index % WIND.length]
   return (
-    <g transform={`translate(${x},86)`}>
+    <g transform={`translate(${x},120)`}>
       <g className="pg-plant" style={{ animationDelay: `${index * 0.15}s` }}>
         <g>
           <animateTransform attributeName="transform" type="rotate"
@@ -336,12 +340,12 @@ function GrassTufts() {
       {GRASS_POS.map((g, i) => (
         <g key={i}>
           <animateTransform attributeName="transform" type="rotate"
-            values={`0 ${g.x} 86;${g.l * 1.5} ${g.x} 86;0 ${g.x} 86`}
+            values={`0 ${g.x} 120;${g.l * 2} ${g.x} 120;0 ${g.x} 120`}
             dur={`${2.5 + (i % 3) * 0.5}s`} begin={`${(i % 5) * 0.3}s`} repeatCount="indefinite" />
           <path
-            d={`M${g.x} 86Q${g.x + g.l} ${86 - g.h / 2} ${g.x + g.l * 0.6} ${86 - g.h}`}
+            d={`M${g.x} 120Q${g.x + g.l} ${120 - g.h / 2} ${g.x + g.l * 0.6} ${120 - g.h}`}
             stroke={i % 2 === 0 ? C.grass : C.grassLight}
-            strokeWidth="0.7" fill="none" strokeLinecap="round" />
+            strokeWidth="0.8" fill="none" strokeLinecap="round" />
         </g>
       ))}
     </g>
@@ -352,8 +356,8 @@ function PollenParticles() {
   return (
     <g>
       {POLLEN_CFG.map((p, i) => (
-        <circle key={i} cx={p.x} cy={82} r={0.7} fill={C.pollen} opacity="0">
-          <animate attributeName="cy" values="82;28" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
+        <circle key={i} cx={p.x} cy={116} r={0.8} fill={C.pollen} opacity="0">
+          <animate attributeName="cy" values="116;20" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
           <animate attributeName="cx" values={`${p.x};${p.x + p.drift}`} dur={p.dur} begin={p.delay} repeatCount="indefinite" />
           <animate attributeName="opacity" values="0;0.65;0.5;0" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
         </circle>
@@ -366,7 +370,7 @@ function Butterfly() {
   return (
     <g opacity="0.6">
       <animateMotion
-        path="M40,40C120,22 200,55 270,35C200,22 120,55 40,40"
+        path="M40,50C120,28 200,65 270,40C200,28 120,65 40,50"
         dur="18s" rotate="auto" repeatCount="indefinite" />
       <ellipse cx="0" cy="0" rx="0.6" ry="1.8" fill={C.butterfly} />
       <path d="M-0.5,-0.8C-3.5,-4 -5,-1.5 -3,1C-4.5,0 -5,2.5 -1.5,2Z" fill={C.butterflyWing} opacity="0.6">
@@ -389,7 +393,7 @@ function Bee() {
   return (
     <g opacity="0.55" className="pg-fadein" style={{ animationDelay: '2s' }}>
       <animateMotion
-        path="M200,50C160,30 100,60 60,38C100,25 160,55 200,50"
+        path="M200,60C160,35 100,72 60,45C100,30 160,65 200,60"
         dur="14s" rotate="auto" repeatCount="indefinite" />
       <ellipse cx="0" cy="0" rx="1.8" ry="1.2" fill={C.bee} />
       <line x1="-0.6" y1="0" x2="0.6" y2="0" stroke="#2E4034" strokeWidth="0.4" />
@@ -407,6 +411,180 @@ function Bee() {
   )
 }
 
+// --- Météo : décor dynamique ---
+
+function WeatherClouds({ variant = 'light' }) {
+  const opacity = variant === 'heavy' ? 0.55 : 0.3
+  return (
+    <g className="pg-fadein">
+      {/* Nuage gauche */}
+      <g opacity={opacity}>
+        <ellipse cx="55" cy="22" rx="22" ry="9" fill="#D8E0DA" />
+        <ellipse cx="42" cy="24" rx="14" ry="7" fill="#CDD5CF" />
+        <ellipse cx="68" cy="24" rx="16" ry="7.5" fill="#CDD5CF" />
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0;6,0;0,0" dur="12s" repeatCount="indefinite" />
+      </g>
+      {/* Nuage droit */}
+      <g opacity={opacity * 0.85}>
+        <ellipse cx="220" cy="16" rx="25" ry="10" fill="#D8E0DA" />
+        <ellipse cx="205" cy="18" rx="15" ry="8" fill="#CDD5CF" />
+        <ellipse cx="238" cy="19" rx="18" ry="8" fill="#CDD5CF" />
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0;-5,0;0,0" dur="14s" repeatCount="indefinite" />
+      </g>
+      {variant === 'heavy' && (
+        <g opacity={opacity * 0.7}>
+          <ellipse cx="140" cy="12" rx="20" ry="8" fill="#C5CDCA" />
+          <ellipse cx="128" cy="14" rx="12" ry="6" fill="#BCC5BF" />
+          <ellipse cx="155" cy="14" rx="14" ry="7" fill="#BCC5BF" />
+          <animateTransform attributeName="transform" type="translate"
+            values="0,0;4,0;0,0" dur="10s" repeatCount="indefinite" />
+        </g>
+      )}
+    </g>
+  )
+}
+
+function WeatherRain() {
+  const drops = [
+    { x: 40, d: '0s' }, { x: 75, d: '0.3s' }, { x: 110, d: '0.7s' },
+    { x: 145, d: '0.15s' }, { x: 180, d: '0.5s' }, { x: 215, d: '0.85s' },
+    { x: 250, d: '0.4s' }, { x: 60, d: '0.6s' }, { x: 130, d: '0.2s' },
+    { x: 195, d: '0.9s' }, { x: 265, d: '0.1s' }, { x: 90, d: '0.75s' },
+  ]
+  return (
+    <g>
+      <WeatherClouds variant="heavy" />
+      {drops.map((r, i) => (
+        <line key={i} x1={r.x} y1={30} x2={r.x - 3} y2={38}
+          stroke="#9BAFB0" strokeWidth="0.8" strokeLinecap="round" opacity="0">
+          <animate attributeName="y1" values="30;115" dur="1.2s" begin={r.d} repeatCount="indefinite" />
+          <animate attributeName="y2" values="38;123" dur="1.2s" begin={r.d} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.5;0.4;0" dur="1.2s" begin={r.d} repeatCount="indefinite" />
+        </line>
+      ))}
+    </g>
+  )
+}
+
+function WeatherDrizzle() {
+  const drops = [
+    { x: 55, d: '0s' }, { x: 120, d: '0.4s' }, { x: 185, d: '0.8s' },
+    { x: 250, d: '0.2s' }, { x: 90, d: '0.6s' }, { x: 155, d: '1s' },
+  ]
+  return (
+    <g>
+      <WeatherClouds variant="light" />
+      {drops.map((r, i) => (
+        <circle key={i} cx={r.x} cy={32} r={0.6} fill="#9BAFB0" opacity="0">
+          <animate attributeName="cy" values="32;118" dur="2s" begin={r.d} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.4;0.3;0" dur="2s" begin={r.d} repeatCount="indefinite" />
+        </circle>
+      ))}
+    </g>
+  )
+}
+
+function WeatherSnow() {
+  const flakes = [
+    { x: 45, d: '0s', dx: 5 }, { x: 90, d: '0.5s', dx: -3 },
+    { x: 135, d: '1s', dx: 6 }, { x: 180, d: '0.3s', dx: -4 },
+    { x: 225, d: '0.8s', dx: 5 }, { x: 270, d: '1.2s', dx: -6 },
+    { x: 60, d: '0.6s', dx: 4 }, { x: 155, d: '0.2s', dx: -5 },
+    { x: 205, d: '0.9s', dx: 3 }, { x: 115, d: '1.4s', dx: -4 },
+  ]
+  return (
+    <g>
+      <WeatherClouds variant="heavy" />
+      {flakes.map((s, i) => (
+        <circle key={i} cx={s.x} cy={20} r={1.2} fill="#fff" opacity="0">
+          <animate attributeName="cy" values="20;120" dur="4s" begin={s.d} repeatCount="indefinite" />
+          <animate attributeName="cx" values={`${s.x};${s.x + s.dx};${s.x + s.dx * 2}`}
+            dur="4s" begin={s.d} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.7;0.6;0" dur="4s" begin={s.d} repeatCount="indefinite" />
+        </circle>
+      ))}
+    </g>
+  )
+}
+
+function WeatherSun() {
+  return (
+    <g className="pg-fadein">
+      {/* Soleil */}
+      <circle cx="260" cy="22" r="14" fill="#FDF5D6" opacity="0.25">
+        <animate attributeName="r" values="14;16;14" dur="4s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.2;0.35;0.2" dur="4s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="260" cy="22" r="8" fill="#F7DCA0" opacity="0.4" />
+      <circle cx="260" cy="22" r="5" fill="#ECC46A" opacity="0.5" />
+      {/* Rayons */}
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
+        const rad = (a * Math.PI) / 180
+        return (
+          <line key={a}
+            x1={260 + 10 * Math.cos(rad)} y1={22 + 10 * Math.sin(rad)}
+            x2={260 + 15 * Math.cos(rad)} y2={22 + 15 * Math.sin(rad)}
+            stroke="#ECC46A" strokeWidth="0.6" strokeLinecap="round" opacity="0.3">
+            <animate attributeName="opacity" values="0.2;0.45;0.2" dur="3s"
+              begin={`${a / 360}s`} repeatCount="indefinite" />
+          </line>
+        )
+      })}
+    </g>
+  )
+}
+
+function WeatherFog() {
+  return (
+    <g className="pg-fadein">
+      <rect x="0" y="60" width="300" height="80" fill="#D8E0DA" opacity="0.15">
+        <animate attributeName="opacity" values="0.1;0.22;0.1" dur="6s" repeatCount="indefinite" />
+      </rect>
+      <line x1="20" y1="75" x2="280" y2="75" stroke="#C5CDCA" strokeWidth="1.5" strokeLinecap="round" opacity="0.2">
+        <animate attributeName="opacity" values="0.15;0.3;0.15" dur="5s" repeatCount="indefinite" />
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0;4,0;0,0" dur="8s" repeatCount="indefinite" />
+      </line>
+      <line x1="10" y1="90" x2="290" y2="90" stroke="#C5CDCA" strokeWidth="1" strokeLinecap="round" opacity="0.15">
+        <animate attributeName="opacity" values="0.1;0.25;0.1" dur="7s" repeatCount="indefinite" />
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0;-3,0;0,0" dur="10s" repeatCount="indefinite" />
+      </line>
+    </g>
+  )
+}
+
+function WeatherStorm() {
+  return (
+    <g>
+      <WeatherRain />
+      {/* Éclair */}
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0.8;0;0;0;0.6;0;0;0;0;0;0;0;0;0;0;0;0;0"
+          dur="6s" repeatCount="indefinite" />
+        <path d="M148 8L142 24L150 22L144 38" fill="none"
+          stroke="#F7DCA0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </g>
+  )
+}
+
+function WeatherDecor({ weather }) {
+  if (!weather) return null
+  switch (weather.type) {
+    case 'clear': return <WeatherSun />
+    case 'cloudy': return <WeatherClouds variant="light" />
+    case 'fog': return <WeatherFog />
+    case 'drizzle': return <WeatherDrizzle />
+    case 'rain': return <WeatherRain />
+    case 'snow': return <WeatherSnow />
+    case 'storm': return <WeatherStorm />
+    default: return null
+  }
+}
+
 // --- Composant principal ---
 
 /**
@@ -419,11 +597,8 @@ function Bee() {
 function getPlantMaturity(plantIndex, plantCount, days) {
   if (days >= 7) return 2
   if (days < 3) return 0
-  // Age: 0 = oldest, plantCount-1 = newest
   const age = plantCount - 1 - plantIndex
-  // How many "maturity points" to distribute
-  const progress = days - 2 // 1 at day 3, 2 at day 4, etc.
-  // Oldest plants bloom first: each plant needs ~1.5 progress points per maturity level
+  const progress = days - 2
   const threshold = age * 1.2
   if (progress >= threshold + 2.5) return 2
   if (progress >= threshold + 1) return 1
@@ -431,6 +606,12 @@ function getPlantMaturity(plantIndex, plantCount, days) {
 }
 
 export default function GrowingGarden({ days = 0 }) {
+  const [weather, setWeather] = useState(null)
+
+  useEffect(() => {
+    fetchWeather().then((w) => { if (w) setWeather(w) })
+  }, [])
+
   const plantCount = Math.min(days, 7)
   const hasFlowers = days >= 3
   const positions = Array.from({ length: plantCount }, (_, i) => {
@@ -439,12 +620,14 @@ export default function GrowingGarden({ days = 0 }) {
   })
 
   return (
-    <svg viewBox="0 0 300 100" style={{ width: '100%' }} role="img"
+    <svg viewBox="0 0 300 140" style={{ width: '100%' }} role="img"
       aria-label={`Jardin de ${days} jour${days > 1 ? 's' : ''} suivi${days > 1 ? 's' : ''}`}>
       <style>{SVG_STYLE}</style>
 
-      <ellipse cx="150" cy="88" rx="142" ry="14" fill={C.ground} />
-      <ellipse cx="150" cy="89" rx="128" ry="10" fill={C.groundInner} opacity="0.5" />
+      <WeatherDecor weather={weather} />
+
+      <ellipse cx="150" cy="122" rx="145" ry="20" fill={C.ground} />
+      <ellipse cx="150" cy="123" rx="130" ry="14" fill={C.groundInner} opacity="0.5" />
 
       {plantCount > 0 && <GrassTufts />}
 
@@ -458,8 +641,8 @@ export default function GrowingGarden({ days = 0 }) {
 
       {days === 0 && (
         <>
-          <circle cx="150" cy="85" r="2" fill={C.stemDark} opacity="0.3" />
-          <text x="150" y="48" textAnchor="middle" fontSize="11" fill="#9DAFA1" fontFamily="Nunito, sans-serif">
+          <circle cx="150" cy="119" r="2.5" fill={C.stemDark} opacity="0.3" />
+          <text x="150" y="65" textAnchor="middle" fontSize="12" fill="#9DAFA1" fontFamily="Nunito, sans-serif">
             Ton jardin attend sa premiere pousse
           </text>
         </>

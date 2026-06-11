@@ -341,7 +341,7 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
 }
 
 /** Mode complet : vue de dessus du systeme solaire */
-function FullWidget({ planets, moonPhase, moonInfo }) {
+function FullWidget({ planets, moonPhase, moonInfo, showMoon = true, showPlanets = true }) {
   const terre = planets.find((p) => p.id === 'terre')
   const terrePos = terre ? planetXY(terre.angle, ORBIT_R.terre) : null
 
@@ -354,6 +354,11 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
       x: terrePos.x + moonOrbitR * Math.cos(rad),
       y: terrePos.y + moonOrbitR * Math.sin(rad),
     }
+  }
+
+  // Moon-only: skip the orbital chart, just show the strip
+  if (showMoon && !showPlanets) {
+    return <MoonPhaseStrip moonPhase={moonPhase} moonInfo={moonInfo} />
   }
 
   return (
@@ -428,7 +433,7 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
         )}
 
         {/* Lune avec halo */}
-        {terrePos && moonPos && (
+        {showMoon && terrePos && moonPos && (
           <g>
             <circle cx={terrePos.x} cy={terrePos.y} r="10" fill="none"
               stroke={colors.text.faint} strokeWidth="0.3" strokeDasharray="1 2" opacity="0.5" />
@@ -451,81 +456,91 @@ function FullWidget({ planets, moonPhase, moonInfo }) {
         ))}
       </div>
 
-      <MoonPhaseStrip moonPhase={moonPhase} moonInfo={moonInfo} />
+      {showMoon && <MoonPhaseStrip moonPhase={moonPhase} moonInfo={moonInfo} />}
     </div>
   )
 }
 
 /** Mode compact : bandeau horizontal avec lune et planetes */
-function CompactWidget({ planets, moonPhase, moonInfo }) {
+function CompactWidget({ planets, moonPhase, moonInfo, showMoon = true, showPlanets = true }) {
   const waxing = moonPhase <= 0.5
   const cursorPct = moonPhase * 100
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <svg width="26" height="26" viewBox="0 0 26 26" role="img" aria-label={moonInfo.label}>
-            <MoonIcon phase={moonPhase} cx={13} cy={13} r={11} glow />
-          </svg>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
-              <i className={`ti ${waxing ? 'ti-trending-up' : 'ti-trending-down'}`}
-                style={{ fontSize: 12, color: colors.amber.text }} aria-hidden="true" />
+        {showMoon && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <svg width="26" height="26" viewBox="0 0 26 26" role="img" aria-label={moonInfo.label}>
+              <MoonIcon phase={moonPhase} cx={13} cy={13} r={11} glow />
+            </svg>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 12.5, color: colors.text.body, fontWeight: 500 }}>{moonInfo.label}</span>
+                <i className={`ti ${waxing ? 'ti-trending-up' : 'ti-trending-down'}`}
+                  style={{ fontSize: 12, color: colors.amber.text }} aria-hidden="true" />
+              </div>
+              {moonInfo.description && (
+                <div style={{ fontSize: 11, color: colors.text.soft, fontStyle: 'italic' }}>{moonInfo.description}</div>
+              )}
             </div>
-            {moonInfo.description && (
-              <div style={{ fontSize: 11, color: colors.text.soft, fontStyle: 'italic' }}>{moonInfo.description}</div>
-            )}
           </div>
-        </div>
-        <div style={{ width: 1, height: 16, background: colors.border.soft }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {planets.map((p) => (
-            <span key={p.id} title={p.label}
-              style={{
-                width: p.id === 'terre' ? 9 : 7, height: p.id === 'terre' ? 9 : 7,
-                borderRadius: '50%', display: 'inline-block',
-                background: PLANET_STYLE[p.id].color,
-                border: p.id === 'terre' ? `1.5px solid ${colors.green.leaf}` : 'none',
-              }} />
-          ))}
-        </div>
+        )}
+        {showMoon && showPlanets && (
+          <div style={{ width: 1, height: 16, background: colors.border.soft }} />
+        )}
+        {showPlanets && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {planets.map((p) => (
+              <span key={p.id} title={p.label}
+                style={{
+                  width: p.id === 'terre' ? 9 : 7, height: p.id === 'terre' ? 9 : 7,
+                  borderRadius: '50%', display: 'inline-block',
+                  background: PLANET_STYLE[p.id].color,
+                  border: p.id === 'terre' ? `1.5px solid ${colors.green.leaf}` : 'none',
+                }} />
+            ))}
+          </div>
+        )}
       </div>
 
-      <div style={{ marginTop: 8, position: 'relative' }}>
-        <svg viewBox="0 0 200 16" style={{ width: '100%', display: 'block' }}>
-          <line x1="4" y1="8" x2="196" y2="8" stroke={colors.border.soft} strokeWidth="1.5" strokeLinecap="round" />
-          <line x1="4" y1="8" x2={4 + (cursorPct / 100) * 192} y2="8"
-            stroke={colors.green.leafLight} strokeWidth="1.5" strokeLinecap="round" />
-          {PHASE_ICONS.map((p, i) => {
-            const px = 4 + (i / 7) * 192
-            const dist = Math.abs(moonPhase - p.phase)
-            const isCurrent = dist < 0.07 || (p.phase === 0 && moonPhase > 0.93)
-            return (
-              <g key={i} opacity={isCurrent ? 1 : 0.45}>
-                <circle cx={px} cy={8} r={isCurrent ? 6 : 4.5} fill={colors.sand.bg} />
-                <MiniMoon phase={p.phase} cx={px} cy={8} r={isCurrent ? 5.5 : 4} />
-              </g>
-            )
-          })}
-          <circle cx={4 + (cursorPct / 100) * 192} cy={8} r="8" fill="none"
-            stroke={colors.green.leaf} strokeWidth="1" opacity="0.5">
-            <animate attributeName="opacity" values="0.4;0.75;0.4" dur="2.5s" repeatCount="indefinite" />
-          </circle>
-        </svg>
-      </div>
+      {showMoon && (
+        <div style={{ marginTop: 8, position: 'relative' }}>
+          <svg viewBox="0 0 200 16" style={{ width: '100%', display: 'block' }}>
+            <line x1="4" y1="8" x2="196" y2="8" stroke={colors.border.soft} strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="4" y1="8" x2={4 + (cursorPct / 100) * 192} y2="8"
+              stroke={colors.green.leafLight} strokeWidth="1.5" strokeLinecap="round" />
+            {PHASE_ICONS.map((p, i) => {
+              const px = 4 + (i / 7) * 192
+              const dist = Math.abs(moonPhase - p.phase)
+              const isCurrent = dist < 0.07 || (p.phase === 0 && moonPhase > 0.93)
+              return (
+                <g key={i} opacity={isCurrent ? 1 : 0.45}>
+                  <circle cx={px} cy={8} r={isCurrent ? 6 : 4.5} fill={colors.sand.bg} />
+                  <MiniMoon phase={p.phase} cx={px} cy={8} r={isCurrent ? 5.5 : 4} />
+                </g>
+              )
+            })}
+            <circle cx={4 + (cursorPct / 100) * 192} cy={8} r="8" fill="none"
+              stroke={colors.green.leaf} strokeWidth="1" opacity="0.5">
+              <animate attributeName="opacity" values="0.4;0.75;0.4" dur="2.5s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+        </div>
+      )}
     </div>
   )
 }
 
-export default function PlanetaryWidget({ compact = false }) {
+export default function PlanetaryWidget({ compact = false, showMoon = true, showPlanets = true }) {
   const [data, setData] = useState(() => compute())
 
   useEffect(() => {
     const id = setInterval(() => setData(compute()), 60000)
     return () => clearInterval(id)
   }, [])
+
+  if (!showMoon && !showPlanets) return null
 
   const Widget = compact ? CompactWidget : FullWidget
 
@@ -535,7 +550,8 @@ export default function PlanetaryWidget({ compact = false }) {
       borderRadius: radius.md,
       padding: compact ? '10px 14px' : '16px 16px 12px',
     }}>
-      <Widget planets={data.planets} moonPhase={data.moonPhase} moonInfo={data.moonInfo} />
+      <Widget planets={data.planets} moonPhase={data.moonPhase} moonInfo={data.moonInfo}
+        showMoon={showMoon} showPlanets={showPlanets} />
       <div style={{
         display: 'flex', alignItems: 'center', gap: 5, marginTop: compact ? 6 : 8,
         fontSize: 10, color: colors.text.faint,

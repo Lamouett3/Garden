@@ -59,7 +59,8 @@ const DEFAULT_PROFILE = {
   pillActiveDays: 21,
   pillBreakDays: 7,
   pillPackStart: '',
-  planetsOn: false, // désactivé par défaut — cf. CLAUDE.md §3
+  moonOn: false,    // repères lunaires — désactivé par défaut (cf. CLAUDE.md §3)
+  planetsOn: false,  // repères planétaires — désactivé par défaut (cf. CLAUDE.md §3)
   gardenStartDate: null,
   completedGardens: 0,
 }

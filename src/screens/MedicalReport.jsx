@@ -5,12 +5,15 @@ import { PrimaryButton, Segmented, AnimatedNumber } from '../components/ui'
 import { useStore } from '../data/store'
 import { computeStats, withoutBienetre, filterByPeriod, periodLabel, getRefDate, buildCalendarGrid, formatHour } from '../data/stats'
 import { conditions, zoneLabels } from '../data/conditions'
+import { getMoonPhase, getMoonPhaseName, getPlanetPositions } from '../data/astro'
 
 export default function MedicalReport({ bp = 'mobile' }) {
   const { episodes: allEpisodes, profile } = useStore()
   const allReal = withoutBienetre(allEpisodes)
   const [period, setPeriod] = useState('m')
   const [offset, setOffset] = useState(0)
+  const showAstro = profile.moonOn || profile.planetsOn
+  const [astroIncluded, setAstroIncluded] = useState(false)
 
   const filtered = filterByPeriod(allReal, period, offset)
   const stats = computeStats(filtered)
@@ -168,7 +171,7 @@ export default function MedicalReport({ bp = 'mobile' }) {
             )}
 
             {/* --- Calendrier + legende --- */}
-            <CalendarGrid episodes={allReal} year={ref.getFullYear()} month={ref.getMonth()} />
+            <CalendarGrid episodes={allReal} year={ref.getFullYear()} month={ref.getMonth()} showMoon={profile.moonOn} />
             <CalendarLegend />
 
             {/* --- Repartition horaire --- */}
@@ -194,7 +197,7 @@ export default function MedicalReport({ bp = 'mobile' }) {
             </div>
 
             {/* --- Detail des episodes --- */}
-            <EpisodeDetailList episodes={filtered} />
+            <EpisodeDetailList episodes={filtered} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
 
             {/* --- Declencheurs --- */}
             {stats.topTriggers.length > 0 && (
@@ -255,6 +258,39 @@ export default function MedicalReport({ bp = 'mobile' }) {
                 <strong style={{ color: colors.clinical.ink }}>Note :</strong> Ce rapport est genere automatiquement a partir des donnees saisies par le patient via l'application Pousse. Les donnees sont auto-declaratives et ne constituent pas un diagnostic medical. Elles sont destinees a faciliter le dialogue entre le patient et son professionnel de sante.
               </div>
             </div>
+
+            {/* --- Section astronomique (optionnelle) --- */}
+            {showAstro && (
+              <>
+                <div style={{
+                  borderTop: `1.5px dashed ${colors.clinical.bg}`, paddingTop: 16, marginBottom: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <i className="ti ti-moon-stars" style={{ fontSize: 17, color: colors.text.soft }} aria-hidden="true" />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: colors.clinical.ink }}>Reperes astronomiques</div>
+                      <div style={{ fontSize: 10, color: colors.text.soft }}>Correlations avec tes cycles lunaires et planetaires</div>
+                    </div>
+                  </div>
+                  <button className="no-print" onClick={() => setAstroIncluded((v) => !v)}
+                    style={{
+                      border: `1.5px solid ${astroIncluded ? colors.green.primary : colors.border.soft}`,
+                      background: astroIncluded ? colors.green.soft : 'transparent',
+                      borderRadius: 8, padding: '5px 12px', fontSize: 11, fontWeight: 600,
+                      color: astroIncluded ? colors.green.primaryDark : colors.text.muted,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                    <i className={`ti ${astroIncluded ? 'ti-check' : 'ti-plus'}`} style={{ fontSize: 13 }} aria-hidden="true" />
+                    {astroIncluded ? 'Inclus au PDF' : 'Inclure au PDF'}
+                  </button>
+                </div>
+                <div className={astroIncluded ? '' : 'no-print'}>
+                  <AstroSection episodes={filtered} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -410,7 +446,19 @@ function CalendarLegend() {
   )
 }
 
-function CalendarGrid({ episodes, year, month }) {
+const MOON_ICON_TINY = (phase) => {
+  if (phase < 0.0625) return { icon: 'ti-circle', opacity: 0.3 }
+  if (phase < 0.1875) return { icon: 'ti-moon', opacity: 0.35 }
+  if (phase < 0.3125) return { icon: 'ti-circle-half-vertical', opacity: 0.4 }
+  if (phase < 0.4375) return { icon: 'ti-moon-filled', opacity: 0.45 }
+  if (phase < 0.5625) return { icon: 'ti-circle-filled', opacity: 0.55 }
+  if (phase < 0.6875) return { icon: 'ti-moon-filled', opacity: 0.45 }
+  if (phase < 0.8125) return { icon: 'ti-circle-half-vertical', opacity: 0.4 }
+  if (phase < 0.9375) return { icon: 'ti-moon', opacity: 0.35 }
+  return { icon: 'ti-circle', opacity: 0.3 }
+}
+
+function CalendarGrid({ episodes, year, month, showMoon }) {
   const { weeks, monthLabel } = buildCalendarGrid(episodes, year, month)
   const dayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
@@ -427,42 +475,66 @@ function CalendarGrid({ episodes, year, month }) {
               borderBottom: `1px solid ${colors.clinical.bg}`,
             }}>{d}</div>
           ))}
-          {weeks.flat().map((cell, i) => (
-            <div key={i} style={{
-              minHeight: 36, padding: '3px 2px', textAlign: 'center',
-              borderBottom: `1px solid ${colors.clinical.bg}`,
-              borderRight: (i + 1) % 7 !== 0 ? `1px solid ${colors.clinical.bg}` : 'none',
-              background: cell.isToday ? colors.clinical.surfaceSoft : 'transparent',
-            }}>
-              {cell.inMonth && (
-                <>
-                  <div style={{ fontSize: 10, color: cell.isToday ? colors.clinical.ink : colors.text.muted, fontWeight: cell.isToday ? 700 : 400 }}>
-                    {cell.day}
-                  </div>
-                  {cell.episodes.length > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2, flexWrap: 'wrap' }}>
-                      {cell.episodes.map((ep, j) => (
-                        <span key={j}
-                          title={`${ep.hour} — ${conditions[ep.condition]?.label || ep.condition} (${ep.intensity}/10)`}
-                          style={{
-                            width: 6, height: 6, borderRadius: '50%',
-                            background: DOT_COLOR(ep.intensity || 0),
-                          }} />
-                      ))}
+          {weeks.flat().map((cell, i) => {
+            const moonIcon = (showMoon && cell.inMonth)
+              ? MOON_ICON_TINY(getMoonPhase(new Date(year, month, cell.day)))
+              : null
+            return (
+              <div key={i} style={{
+                minHeight: showMoon ? 42 : 36, padding: '3px 2px', textAlign: 'center',
+                borderBottom: `1px solid ${colors.clinical.bg}`,
+                borderRight: (i + 1) % 7 !== 0 ? `1px solid ${colors.clinical.bg}` : 'none',
+                background: cell.isToday ? colors.clinical.surfaceSoft : 'transparent',
+              }}>
+                {cell.inMonth && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                      <span style={{ fontSize: 10, color: cell.isToday ? colors.clinical.ink : colors.text.muted, fontWeight: cell.isToday ? 700 : 400 }}>
+                        {cell.day}
+                      </span>
+                      {moonIcon && (
+                        <i className={`ti ${moonIcon.icon}`}
+                          style={{ fontSize: 8, color: '#9A8F80', opacity: moonIcon.opacity }}
+                          aria-hidden="true" />
+                      )}
                     </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
+                    {cell.episodes.length > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2, flexWrap: 'wrap' }}>
+                        {cell.episodes.map((ep, j) => (
+                          <span key={j}
+                            title={`${ep.hour} — ${conditions[ep.condition]?.label || ep.condition} (${ep.intensity}/10)`}
+                            style={{
+                              width: 6, height: 6, borderRadius: '50%',
+                              background: DOT_COLOR(ep.intensity || 0),
+                            }} />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
 
-function EpisodeDetailList({ episodes }) {
+const ZODIAC_FULL = [
+  'Belier', 'Taureau', 'Gemeaux', 'Cancer', 'Lion', 'Vierge',
+  'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons',
+]
+const ZODIAC_SHORT = ['Bel', 'Tau', 'Gem', 'Can', 'Lio', 'Vie', 'Bal', 'Sco', 'Sag', 'Cap', 'Ver', 'Poi']
+function zodiacShort(angle) {
+  return ZODIAC_SHORT[Math.floor(((angle % 360) + 360) % 360 / 30)]
+}
+
+const REPORT_PLANET_LABELS = { mercure: 'Me', venus: 'Ve', mars: 'Ma', jupiter: 'Ju', saturne: 'Sa' }
+
+function EpisodeDetailList({ episodes, showMoon, showPlanets }) {
   const sorted = [...episodes].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+  const hasAstro = showMoon || showPlanets
   return (
     <div style={{ marginBottom: 18 }}>
       <SectionTitle icon="ti-list">Detail des episodes</SectionTitle>
@@ -477,6 +549,7 @@ function EpisodeDetailList({ episodes }) {
               <th style={{ textAlign: 'center', paddingBottom: 6, fontWeight: 600 }}>Intensite</th>
               <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Duree</th>
               <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Traitement</th>
+              {hasAstro && <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Reperes astro.</th>}
             </tr>
           </thead>
           <tbody>
@@ -484,6 +557,22 @@ function EpisodeDetailList({ episodes }) {
               const d = new Date(ep.createdAt)
               const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
               const zonesStr = (ep.zones || []).map((z) => zoneLabels[z] || z).join(', ') || '—'
+
+              let astroCell = null
+              if (hasAstro) {
+                const parts = []
+                if (showMoon) {
+                  const moonInfo = getMoonPhaseName(d)
+                  parts.push(moonInfo.label.split(' ').slice(-1)[0])
+                }
+                if (showPlanets) {
+                  const planets = getPlanetPositions(d).filter((p) => p.id !== 'terre')
+                  const pStr = planets.map((p) => `${REPORT_PLANET_LABELS[p.id]}${zodiacShort(p.angle)}`).join(' ')
+                  parts.push(pStr)
+                }
+                astroCell = parts.join(' · ')
+              }
+
               return (
                 <tr key={ep.id} style={{ borderTop: `1px solid ${colors.clinical.bg}` }}>
                   <td style={{ padding: '6px 0', color: colors.text.body }}>{dateStr}</td>
@@ -499,12 +588,294 @@ function EpisodeDetailList({ episodes }) {
                   </td>
                   <td style={{ textAlign: 'right', color: colors.text.soft }}>{ep.duration || '—'}</td>
                   <td style={{ textAlign: 'right', color: colors.text.muted, fontSize: 10 }}>{ep.treatment && ep.treatment !== 'Aucun' ? ep.treatment : '—'}</td>
+                  {hasAstro && (
+                    <td style={{ textAlign: 'right', fontSize: 9, color: '#9A8F80', maxWidth: 90 }}>{astroCell}</td>
+                  )}
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// --- Corrélations astronomiques ---
+
+const MOON_PHASES = [
+  { key: 'nouvelle', label: 'Nouvelle lune', min: 0, max: 0.125, icon: 'ti-circle', color: '#5A6B5E' },
+  { key: 'croissant1', label: 'Premier croissant', min: 0.125, max: 0.25, icon: 'ti-moon', color: '#9FC4A4' },
+  { key: 'quartier1', label: 'Premier quartier', min: 0.25, max: 0.375, icon: 'ti-circle-half-vertical', color: '#B8AFA0' },
+  { key: 'gibbeuse_c', label: 'Gibbeuse croissante', min: 0.375, max: 0.5, icon: 'ti-moon-filled', color: '#C4B17C' },
+  { key: 'pleine', label: 'Pleine lune', min: 0.5, max: 0.625, icon: 'ti-circle-filled', color: '#FFFDE7' },
+  { key: 'gibbeuse_d', label: 'Gibbeuse decroissante', min: 0.625, max: 0.75, icon: 'ti-moon-filled', color: '#C4B17C' },
+  { key: 'quartier3', label: 'Dernier quartier', min: 0.75, max: 0.875, icon: 'ti-circle-half-vertical', color: '#B8AFA0' },
+  { key: 'croissant3', label: 'Dernier croissant', min: 0.875, max: 1.0, icon: 'ti-moon', color: '#9FC4A4' },
+]
+
+function getMoonPhaseIndex(phase) {
+  for (let i = 0; i < MOON_PHASES.length; i++) {
+    if (phase < MOON_PHASES[i].max) return i
+  }
+  return 0
+}
+
+function computeMoonCorrelation(episodes) {
+  const buckets = MOON_PHASES.map((p) => ({ ...p, count: 0, totalIntensity: 0, episodes: [] }))
+
+  episodes.forEach((ep) => {
+    const d = new Date(ep.createdAt)
+    const phase = getMoonPhase(d)
+    const idx = getMoonPhaseIndex(phase)
+    buckets[idx].count++
+    buckets[idx].totalIntensity += (ep.intensity || 0)
+    buckets[idx].episodes.push(ep)
+  })
+
+  const total = episodes.length || 1
+  buckets.forEach((b) => {
+    b.pct = Math.round((b.count / total) * 100)
+    b.avgIntensity = b.count > 0 ? Math.round((b.totalIntensity / b.count) * 10) / 10 : 0
+  })
+
+  // Insights
+  const insights = []
+  const maxBucket = buckets.reduce((a, b) => b.count > a.count ? b : a, buckets[0])
+  const minBucket = buckets.filter((b) => b.count > 0).reduce((a, b) => b.count < a.count ? b : a, maxBucket)
+  const maxIntBucket = buckets.filter((b) => b.count >= 2).reduce((a, b) => b.avgIntensity > a.avgIntensity ? b : a, buckets[0])
+
+  if (maxBucket.count > 0 && maxBucket.pct >= 20) {
+    insights.push(`${maxBucket.pct}% de tes episodes surviennent en phase de ${maxBucket.label.toLowerCase()} (${maxBucket.count}/${total}).`)
+  }
+  if (maxIntBucket.count >= 2 && maxIntBucket.avgIntensity > 0) {
+    insights.push(`L'intensite moyenne est la plus elevee en ${maxIntBucket.label.toLowerCase()} : ${String(maxIntBucket.avgIntensity).replace('.', ',')}/10.`)
+  }
+  if (maxBucket.key !== minBucket.key && minBucket.count > 0 && maxBucket.count >= minBucket.count * 2) {
+    insights.push(`Les episodes sont ${Math.round(maxBucket.count / Math.max(1, minBucket.count))}x plus frequents en ${maxBucket.label.toLowerCase()} qu'en ${minBucket.label.toLowerCase()}.`)
+  }
+
+  return { buckets, insights }
+}
+
+const PLANET_LABELS = {
+  mercure: 'Mercure', venus: 'Venus', mars: 'Mars',
+  jupiter: 'Jupiter', saturne: 'Saturne',
+}
+
+// Signe zodiacal simplifie (30 degres chacun, ecliptique)
+const ZODIAC = [
+  'Belier', 'Taureau', 'Gemeaux', 'Cancer', 'Lion', 'Vierge',
+  'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons',
+]
+function zodiacSign(angle) {
+  return ZODIAC[Math.floor(((angle % 360) + 360) % 360 / 30)]
+}
+
+function computePlanetaryCorrelation(episodes) {
+  if (episodes.length === 0) return { planetPhases: [], insights: [] }
+
+  // For each episode, compute planet positions
+  const epData = episodes.map((ep) => {
+    const d = new Date(ep.createdAt)
+    const planets = getPlanetPositions(d)
+    return { ep, planets, intensity: ep.intensity || 0 }
+  })
+
+  // For each planet (excluding earth), find the zodiac sign distribution during episodes
+  const planetIds = ['mercure', 'venus', 'mars', 'jupiter', 'saturne']
+  const planetPhases = planetIds.map((pid) => {
+    const signCounts = {}
+    const signIntensity = {}
+    epData.forEach(({ planets, intensity }) => {
+      const p = planets.find((pp) => pp.id === pid)
+      if (!p) return
+      const sign = zodiacSign(p.angle)
+      signCounts[sign] = (signCounts[sign] || 0) + 1
+      signIntensity[sign] = (signIntensity[sign] || 0) + intensity
+    })
+    const signs = Object.entries(signCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([sign, count]) => ({
+        sign, count,
+        pct: Math.round((count / episodes.length) * 100),
+        avgIntensity: Math.round((signIntensity[sign] / count) * 10) / 10,
+      }))
+    return { id: pid, label: PLANET_LABELS[pid], signs }
+  })
+
+  // High intensity episodes (>= 7)
+  const highEps = epData.filter((e) => e.intensity >= 7)
+  const insights = []
+
+  if (highEps.length >= 2) {
+    // Find dominant sign for each planet during high-intensity episodes
+    planetIds.forEach((pid) => {
+      const signCounts = {}
+      highEps.forEach(({ planets }) => {
+        const p = planets.find((pp) => pp.id === pid)
+        if (p) {
+          const sign = zodiacSign(p.angle)
+          signCounts[sign] = (signCounts[sign] || 0) + 1
+        }
+      })
+      const top = Object.entries(signCounts).sort((a, b) => b[1] - a[1])[0]
+      if (top && top[1] >= 2) {
+        const pct = Math.round((top[1] / highEps.length) * 100)
+        if (pct >= 40) {
+          insights.push(`${pct}% de tes episodes intenses (>= 7/10) surviennent avec ${PLANET_LABELS[pid]} en ${top[0]}.`)
+        }
+      }
+    })
+  }
+
+  // Current positions for context
+  const currentPositions = getPlanetPositions(new Date())
+    .filter((p) => p.id !== 'terre')
+    .map((p) => ({ ...p, sign: zodiacSign(p.angle) }))
+
+  return { planetPhases, insights, currentPositions }
+}
+
+function AstroSection({ episodes, showMoon, showPlanets }) {
+  const moonData = showMoon ? computeMoonCorrelation(episodes) : null
+  const planetData = showPlanets ? computePlanetaryCorrelation(episodes) : null
+  const maxMoonCount = moonData ? Math.max(1, ...moonData.buckets.map((b) => b.count)) : 1
+  const allInsights = [
+    ...(moonData ? moonData.insights : []),
+    ...(planetData ? planetData.insights : []),
+  ]
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      {/* Avertissement */}
+      <div style={{
+        background: '#FFF8EE', borderRadius: radius.sm,
+        padding: '10px 14px', marginBottom: 14,
+        border: `1.5px solid ${colors.amber.border}`,
+        display: 'flex', alignItems: 'flex-start', gap: 8,
+      }}>
+        <i className="ti ti-alert-triangle" style={{ color: colors.amber.text, fontSize: 16, marginTop: 1, flexShrink: 0 }} aria-hidden="true" />
+        <div style={{ fontSize: 11, color: colors.amber.text, lineHeight: 1.55 }}>
+          <strong>Section informative — sans valeur medicale.</strong> Les correlations presentees ci-dessous sont des observations purement statistiques basees sur les reperes astronomiques choisis par l'utilisateur. Elles ne constituent en aucun cas une analyse medicale et ne doivent pas etre utilisees pour orienter un diagnostic ou un traitement.
+        </div>
+      </div>
+
+      {/* Corrélations lunaires */}
+      {moonData && (
+        <>
+          <SectionTitle icon="ti-moon">Repartition lunaire des episodes</SectionTitle>
+          <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56, marginBottom: 4 }}>
+            {moonData.buckets.map((b, i) => (
+              <div key={b.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div className="anim-barGrow" style={{
+                  width: '100%', maxWidth: 32, borderRadius: 3,
+                  height: b.count > 0 ? Math.max(5, (b.count / maxMoonCount) * 48) : 0,
+                  background: b.key === 'pleine' ? '#C4B17C' : b.key === 'nouvelle' ? '#5A6B5E' : colors.green.leaf,
+                  opacity: b.count > 0 ? 0.85 : 0.2,
+                  animationDelay: `${i * 0.05}s`,
+                }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+            {moonData.buckets.map((b) => (
+              <div key={b.key} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: colors.text.faint }}>
+                {b.count > 0 ? b.count : ''}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 10 }}>
+            {moonData.buckets.map((b) => (
+              <div key={b.key} style={{ flex: 1, textAlign: 'center' }}>
+                <i className={`ti ${b.icon}`} style={{ fontSize: 11, color: b.color }} aria-hidden="true" />
+              </div>
+            ))}
+          </div>
+
+          {/* Intensité moyenne par phase */}
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
+            {moonData.buckets.filter((b) => b.count > 0).map((b) => (
+              <div key={b.key} style={{
+                fontSize: 10, padding: '4px 8px', borderRadius: 6,
+                background: colors.clinical.surfaceSoft,
+                border: `1px solid ${colors.clinical.bg}`,
+                color: colors.text.body, display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                <i className={`ti ${b.icon}`} style={{ fontSize: 10, color: b.color }} aria-hidden="true" />
+                <span style={{ color: colors.text.soft }}>{b.label.split(' ').slice(-1)[0]}</span>
+                <strong style={{ color: colors.clinical.ink }}>{String(b.avgIntensity).replace('.', ',')}</strong>
+                <span style={{ fontSize: 8, color: colors.text.faint }}>/10</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Corrélations planétaires */}
+      {planetData && planetData.planetPhases.length > 0 && (
+        <>
+          <SectionTitle icon="ti-planet">Positions planetaires lors des episodes</SectionTitle>
+
+          {/* Positions actuelles */}
+          <div style={{
+            display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12,
+            background: colors.clinical.surfaceSoft, borderRadius: radius.sm, padding: '10px 12px',
+          }}>
+            <span style={{ fontSize: 10, color: colors.text.soft, width: '100%', marginBottom: 2 }}>Positions actuelles :</span>
+            {planetData.currentPositions.map((p) => (
+              <span key={p.id} style={{
+                fontSize: 10, padding: '3px 7px', borderRadius: 5,
+                background: colors.clinical.bg, color: colors.text.body,
+              }}>
+                {PLANET_LABELS[p.id]} en <strong>{p.sign}</strong>
+              </span>
+            ))}
+          </div>
+
+          {/* Signe dominant par planète */}
+          <div style={{ marginBottom: 16 }}>
+            {planetData.planetPhases.map((pp) => {
+              const top = pp.signs[0]
+              if (!top || top.pct < 15) return null
+              return (
+                <div key={pp.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  marginBottom: 6, fontSize: 11,
+                }}>
+                  <span style={{ width: 70, color: colors.text.muted, flexShrink: 0, fontWeight: 500 }}>{pp.label}</span>
+                  <span style={{ flex: 1, height: 7, background: colors.clinical.bg, borderRadius: 4, overflow: 'hidden' }}>
+                    <span className="anim-barFillX" style={{
+                      display: 'block', width: `${top.pct}%`, height: '100%',
+                      background: colors.green.primary, borderRadius: 4, opacity: 0.7,
+                    }} />
+                  </span>
+                  <span style={{ fontSize: 10, color: colors.text.soft, width: 90, textAlign: 'right' }}>
+                    {top.sign} ({top.pct}%)
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Insights auto-générés */}
+      {allInsights.length > 0 && (
+        <div style={{
+          background: colors.clinical.surfaceSoft, borderRadius: radius.sm,
+          padding: '12px 14px', marginBottom: 14,
+          borderLeft: `3px solid ${colors.green.leaf}`,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: colors.clinical.ink, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <i className="ti ti-sparkles" style={{ fontSize: 14, color: colors.green.leaf }} aria-hidden="true" />
+            Observations
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: colors.text.body, lineHeight: 1.7 }}>
+            {allInsights.map((ins, i) => <li key={i}>{ins}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
