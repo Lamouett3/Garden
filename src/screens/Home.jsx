@@ -1,5 +1,5 @@
 import { colors, radius } from '../theme/tokens'
-import { Screen, StreakBadge, PrimaryButton } from '../components/ui'
+import { Screen, StreakBadge, PrimaryButton, AnimatedNumber } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
@@ -48,14 +48,19 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
     })
   }
 
+  const gardenProgressRaw = gardenDayCount === 0
+    ? null
+    : gardenComplete
+      ? null
+      : { count: gardenDayCount, goal: GARDEN_GOAL }
   const gardenProgressText = gardenDayCount === 0
     ? 'Note un premier episode pour planter ta premiere pousse'
     : gardenComplete
       ? 'Ton jardin est magnifique !'
-      : `${gardenDayCount}/${GARDEN_GOAL} jours dans ce cycle`
+      : null
 
   const cycleCard = cyclePhase && (
-    <div style={{
+    <div className="anim-fadeInUp anim-d2" style={{
       background: CYCLE_COLORS[cyclePhase.color].bg, borderRadius: radius.md,
       padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 10,
     }}>
@@ -81,7 +86,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   )
 
   const todayCard = loggedToday && (
-    <div style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', display: 'flex', gap: 9, alignItems: 'center' }}>
+    <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', display: 'flex', gap: 9, alignItems: 'center' }}>
       <i className="ti ti-check" style={{ color: colors.green.primaryDark, fontSize: 18 }} aria-hidden="true" />
       <span style={{ fontSize: 13, color: colors.green.primaryDark }}>Tu as deja pris soin de toi aujourd'hui.</span>
     </div>
@@ -124,14 +129,14 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(profile.completedGardens || 0) > 0 && (
-            <StreakBadge icon="ti-trophy">{profile.completedGardens} recolte{profile.completedGardens > 1 ? 's' : ''}</StreakBadge>
+            <StreakBadge icon="ti-trophy"><AnimatedNumber value={profile.completedGardens} /> recolte{profile.completedGardens > 1 ? 's' : ''}</StreakBadge>
           )}
-          <StreakBadge>{streak} j</StreakBadge>
+          <StreakBadge><AnimatedNumber value={streak} /> j</StreakBadge>
         </div>
       </div>
 
       {gardenComplete && (
-        <div style={{
+        <div className="anim-scaleIn" style={{
           background: colors.amber.bg, borderRadius: radius.lg,
           padding: '18px 16px', marginBottom: 14, textAlign: 'center',
           border: `1.5px solid ${colors.amber.border}`,
@@ -165,7 +170,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
                 <GrowingGarden days={gardenDayCount} />
               </div>
               <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 8 }}>
-                {gardenProgressText}
+                {gardenProgressText || <><AnimatedNumber value={gardenProgressRaw.count} />/{gardenProgressRaw.goal} jours dans ce cycle</>}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

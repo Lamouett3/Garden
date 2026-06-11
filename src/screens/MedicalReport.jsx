@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { colors, radius, font } from '../theme/tokens'
-import { PrimaryButton, Segmented } from '../components/ui'
+import { PrimaryButton, Segmented, AnimatedNumber } from '../components/ui'
 
 import { useStore } from '../data/store'
 import { computeStats, withoutBienetre, filterByPeriod, periodLabel, getRefDate, buildCalendarGrid, formatHour } from '../data/stats'
@@ -117,10 +117,10 @@ export default function MedicalReport({ bp = 'mobile' }) {
                 <SectionTitle icon="ti-stethoscope">Repartition par pathologie</SectionTitle>
                 <div style={{ marginBottom: 18 }}>
                   {conditionBreakdown.map((c, i) => (
-                    <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i === conditionBreakdown.length - 1 ? 0 : 6 }}>
+                    <div key={c.key} className={`anim-fadeInUp anim-d${Math.min(i + 1, 8)}`} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i === conditionBreakdown.length - 1 ? 0 : 6 }}>
                       <span style={{ fontSize: 12, color: colors.text.muted, width: 90, flexShrink: 0 }}>{c.label}</span>
                       <span style={{ flex: 1, height: 8, background: colors.clinical.bg, borderRadius: 5, overflow: 'hidden' }}>
-                        <span style={{ display: 'block', width: `${c.pct}%`, height: '100%', background: colors.green.primary, borderRadius: 5 }} />
+                        <span className="anim-barFillX" style={{ display: 'block', width: `${c.pct}%`, height: '100%', background: colors.green.primary, borderRadius: 5 }} />
                       </span>
                       <span style={{ fontSize: 11, color: colors.text.soft, width: 50, textAlign: 'right' }}>{c.count} ({c.pct}%)</span>
                     </div>
@@ -132,12 +132,13 @@ export default function MedicalReport({ bp = 'mobile' }) {
             {/* --- Distribution d'intensite --- */}
             <SectionTitle icon="ti-chart-bar">Distribution d'intensite</SectionTitle>
             <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 50, marginBottom: 6 }}>
-              {intensityDist.map((d) => (
+              {intensityDist.map((d, i) => (
                 <div key={d.level} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{
+                  <div className="anim-barGrow" style={{
                     width: '100%', maxWidth: 28, borderRadius: 3,
                     height: d.pct > 0 ? Math.max(4, d.pct * 0.45) : 0,
                     background: d.level <= 3 ? colors.green.leaf : d.level <= 6 ? colors.amber.bar : d.level <= 8 ? colors.coral.barStrong : '#C45050',
+                    animationDelay: `${i * 0.04}s`,
                   }} />
                 </div>
               ))}
@@ -153,8 +154,8 @@ export default function MedicalReport({ bp = 'mobile' }) {
               <>
                 <SectionTitle icon="ti-man">Zones corporelles touchees</SectionTitle>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-                  {zoneBreakdown.map((z) => (
-                    <span key={z.zone} style={{
+                  {zoneBreakdown.map((z, i) => (
+                    <span key={z.zone} className={`anim-popIn anim-d${Math.min(i + 1, 8)}`} style={{
                       fontSize: 11, padding: '5px 10px', borderRadius: 8,
                       background: colors.clinical.surfaceSoft, color: colors.text.body,
                       border: `1px solid ${colors.clinical.bg}`,
@@ -173,12 +174,13 @@ export default function MedicalReport({ bp = 'mobile' }) {
             {/* --- Repartition horaire --- */}
             <SectionTitle icon="ti-clock">Repartition horaire</SectionTitle>
             <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 36, marginBottom: 4 }}>
-              {timeBreakdown.map((t) => (
+              {timeBreakdown.map((t, i) => (
                 <div key={t.slot} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{
+                  <div className="anim-barGrow" style={{
                     width: '100%', maxWidth: 20, borderRadius: 2,
                     height: t.count > 0 ? Math.max(3, (t.count / Math.max(1, ...timeBreakdown.map(s => s.count))) * 32) : 0,
                     background: colors.green.primary, opacity: 0.7,
+                    animationDelay: `${i * 0.02}s`,
                   }} />
                 </div>
               ))}
@@ -365,9 +367,9 @@ function SectionTitle({ children, icon }) {
 
 function KeyStat({ value, suffix, label }) {
   return (
-    <div style={{ flex: 1, minWidth: 70, background: colors.clinical.surfaceSoft, borderRadius: radius.sm, padding: '11px 10px', textAlign: 'center' }}>
+    <div className="anim-fadeInUp" style={{ flex: 1, minWidth: 70, background: colors.clinical.surfaceSoft, borderRadius: radius.sm, padding: '11px 10px', textAlign: 'center' }}>
       <div style={{ fontSize: 20, fontWeight: 600, color: colors.clinical.ink }}>
-        {value}{suffix && value !== '\u2014' && <span style={{ fontSize: 11, color: colors.sand.faint }}>{suffix}</span>}
+        <AnimatedNumber value={value} />{suffix && value !== '\u2014' && <span style={{ fontSize: 11, color: colors.sand.faint }}>{suffix}</span>}
       </div>
       <div style={{ fontSize: 9, color: colors.text.soft, lineHeight: 1.3 }}>{label}</div>
     </div>
@@ -377,10 +379,10 @@ function KeyStat({ value, suffix, label }) {
 function TriggerBar({ label, pct, count, total, last }) {
   const pctOfTotal = total > 0 ? Math.round((count / total) * 100) : 0
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: last ? 0 : 8 }}>
+    <div className="anim-fadeInUp" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: last ? 0 : 8 }}>
       <span style={{ fontSize: 12, color: colors.text.muted, width: 90, flexShrink: 0 }}>{label}</span>
       <span style={{ flex: 1, height: 8, background: colors.clinical.bg, borderRadius: 5, overflow: 'hidden' }}>
-        <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: colors.green.primary, borderRadius: 5 }} />
+        <span className="anim-barFillX" style={{ display: 'block', width: `${pct}%`, height: '100%', background: colors.green.primary, borderRadius: 5 }} />
       </span>
       <span style={{ fontSize: 11, color: colors.text.soft, width: 60, textAlign: 'right' }}>{count} ({pctOfTotal}%)</span>
     </div>

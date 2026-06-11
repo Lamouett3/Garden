@@ -158,10 +158,11 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {filteredKeys.map((k) => {
+            {filteredKeys.map((k, idx) => {
               const c = conditions[k]
               return (
                 <button key={k} onClick={() => switchCond(k)}
+                  className={`anim-fadeInUp anim-d${Math.min(idx + 1, 8)}`}
                   style={{
                     display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
                     background: colors.green.surface, border: `1.5px solid ${colors.border.soft}`,
@@ -263,7 +264,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
           </div>
 
           {showEfficacy && (
-            <div style={{ background: colors.sand.bg, borderRadius: radius.md, padding: '12px 14px', marginBottom: 18 }}>
+            <div className="anim-fadeInUp" style={{ background: colors.sand.bg, borderRadius: radius.md, padding: '12px 14px', marginBottom: 18 }}>
               <div style={{ fontSize: 12, color: colors.sand.text, marginBottom: 9, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ti ti-bell" aria-hidden="true" /> On te le redemandera dans quelques heures
               </div>
@@ -304,11 +305,11 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
                 <span style={{ fontSize: 13, color: colors.sand.text, display: 'flex', alignItems: 'center', gap: 7 }}>
                   <i className={`ti ${showDetails ? 'ti-minus' : 'ti-plus'}`} aria-hidden="true" /> {cond.extra.label || 'Plus de details'}
                 </span>
-                <i className={`ti ${showDetails ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: colors.sand.faint }} aria-hidden="true" />
+                <i className={`ti ${showDetails ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: colors.sand.faint, transition: 'transform .25s ease', transform: showDetails ? 'rotate(180deg)' : 'rotate(0)' }} aria-hidden="true" />
               </button>
 
               {showDetails && (
-                <div style={{ marginBottom: 18 }}>
+                <div className="anim-slideDown" style={{ marginBottom: 18 }}>
                   {cond.extra.options.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: cond.custom ? 12 : 0 }}>
                       {cond.extra.options.map((o) => (

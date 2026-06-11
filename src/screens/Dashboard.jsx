@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { colors, radius } from '../theme/tokens'
-import { Screen, ScreenHeader, StreakBadge, Segmented } from '../components/ui'
+import { Screen, ScreenHeader, StreakBadge, Segmented, AnimatedNumber } from '../components/ui'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
@@ -28,7 +28,8 @@ function BarChart({ bars, labels, height = 96 }) {
         const fill = b.v === 0 ? BAR_COLOR.empty : BAR_COLOR[b.c]
         return (
           <g key={i}>
-            <rect x={x} y={floorY - h} width={bw} height={h} rx={bw > 10 ? 5 : 3} fill={fill} />
+            <rect x={x} y={floorY - h} width={bw} height={h} rx={bw > 10 ? 5 : 3} fill={fill}
+              style={{ transformOrigin: `${x + bw / 2}px ${floorY}px`, animation: `barGrow .5s cubic-bezier(.34,1.56,.64,1) ${i * 0.06}s both` }} />
             {labels[i] !== undefined && (
               <text x={x + bw / 2} y={height - 6} textAnchor="middle" fontSize="9" fill="#A8B5AB" fontFamily="Nunito, sans-serif">
                 {labels[i]}
@@ -67,7 +68,7 @@ function EpisodeList({ episodes }) {
         const condLabel = conditions[ep.condition]?.label || ep.condition
         const hour = ep.hour || formatHour(ep.createdAt)
         return (
-          <div key={ep.id} style={{
+          <div key={ep.id} className={`anim-fadeInUp anim-d${Math.min(i + 1, 8)}`} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             background: colors.sand.bg, borderRadius: radius.md, padding: '10px 12px',
           }}>
@@ -85,10 +86,10 @@ function EpisodeList({ episodes }) {
 
 function StatCard({ label, value, suffix }) {
   return (
-    <div style={{ flex: 1, background: colors.sand.bg, borderRadius: radius.md, padding: 12 }}>
+    <div className="anim-fadeInUp" style={{ flex: 1, background: colors.sand.bg, borderRadius: radius.md, padding: 12 }}>
       <div style={{ fontSize: 11, color: colors.sand.text }}>{label}</div>
       <div style={{ fontSize: 19, fontWeight: 600, color: colors.text.body }}>
-        {value}{suffix && value !== '\u2014' && <span style={{ fontSize: 12, color: colors.sand.faint }}>{suffix}</span>}
+        <AnimatedNumber value={value} />{suffix && value !== '\u2014' && <span style={{ fontSize: 12, color: colors.sand.faint }}>{suffix}</span>}
       </div>
     </div>
   )
@@ -155,7 +156,7 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
         <StatCard label="Intensite moy." value={stats.avgIntensity} suffix="/10" />
       </div>
       {stats.topTriggers.length > 0 && (
-        <div style={{ background: colors.green.soft, borderRadius: radius.md, padding: '12px 14px', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+        <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '12px 14px', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
           <i className="ti ti-bulb" style={{ color: colors.green.primaryDark, fontSize: 17, marginTop: 1 }} aria-hidden="true" />
           <span style={{ fontSize: 12, color: colors.green.primaryDark, lineHeight: 1.5 }}>
             Ton declencheur le plus frequent : {stats.topTriggers[0].label} ({stats.topTriggers[0].count} fois).
@@ -167,7 +168,7 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
 
   return (
     <Screen bp={bp} wide={wide}>
-      <ScreenHeader title="Mon historique" right={<StreakBadge>{streak} j</StreakBadge>} />
+      <ScreenHeader title="Mon historique" right={<StreakBadge><AnimatedNumber value={streak} /> j</StreakBadge>} />
       {wide ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24, alignItems: 'start' }}>
           <div>{chartBlock}</div>

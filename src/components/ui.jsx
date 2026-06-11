@@ -1,18 +1,14 @@
+import { useState, useEffect, useRef } from 'react'
 import { colors, radius, font } from '../theme/tokens'
 
 // Conteneur d'écran responsive.
-// mobile  : occupe toute la largeur disponible
-// tablet  : carte centrée, largeur confortable
-// desktop : carte centrée plus large
-// Le "cadre" visuel (fond vert + carte) ne s'affiche qu'à partir de la tablette ;
-// sur mobile le contenu remplit l'écran pour un vrai rendu d'app.
 export function Screen({ children, bp = 'mobile', wide = false }) {
   const isMobile = bp === 'mobile'
   const maxW = wide ? (bp === 'desktop' ? 760 : 640) : bp === 'desktop' ? 560 : 480
 
   if (isMobile) {
     return (
-      <div style={{
+      <div className="anim-fadeIn" style={{
         background: colors.green.surface, borderRadius: radius.card,
         padding: '20px 18px 22px', fontFamily: font.family, width: '100%',
         flex: 1, display: 'flex', flexDirection: 'column',
@@ -23,7 +19,7 @@ export function Screen({ children, bp = 'mobile', wide = false }) {
   }
 
   return (
-    <div style={{
+    <div className="anim-fadeIn" style={{
       background: colors.green.surface, borderRadius: radius.card,
       padding: bp === 'desktop' ? '32px 36px 36px' : '26px 28px 30px',
       fontFamily: font.family, width: '100%', maxWidth: maxW, margin: '0 auto',
@@ -35,7 +31,7 @@ export function Screen({ children, bp = 'mobile', wide = false }) {
   )
 }
 
-// Alias rétrocompatible : certains écrans importent encore PhoneFrame.
+// Alias rétrocompatible
 export function PhoneFrame({ children }) {
   return <Screen bp="mobile">{children}</Screen>
 }
@@ -66,7 +62,7 @@ export function ScreenHeader({ title, subtitle, onBack, right }) {
 
 export function StreakBadge({ children, icon = 'ti-seedling' }) {
   return (
-    <div style={{
+    <div className="anim-popIn" style={{
       display: 'flex', alignItems: 'center', gap: 5,
       background: colors.green.softer, color: colors.green.primaryDark,
       fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: radius.pill,
@@ -94,6 +90,8 @@ export function Segmented({ options, value, onChange, variant = 'garden' }) {
               background: active ? activeBg : 'transparent',
               color: active ? activeColor : inactiveColor,
               fontWeight: active ? 600 : 400, borderRadius: radius.sm,
+              transition: 'background .25s ease, color .2s ease, font-weight .15s ease',
+              boxShadow: active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
             }}>
             {opt.label}
           </button>
@@ -116,6 +114,8 @@ export function Chip({ children, active, variant = 'amber', onClick, style }) {
         border: `1.5px solid ${active ? p.border : colors.border.soft}`,
         background: active ? p.bg : 'transparent',
         color: active ? p.text : colors.text.muted,
+        transition: 'all .2s ease',
+        transform: active ? 'scale(1.03)' : 'scale(1)',
         ...style,
       }}>
       {children}
@@ -131,6 +131,7 @@ export function PrimaryButton({ children, icon, onClick, dark }) {
         background: dark ? colors.clinical.ink : colors.green.primary,
         color: '#fff', padding: 14, borderRadius: radius.lg, fontSize: 14,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        transition: 'transform .15s ease, box-shadow .2s ease',
       }}>
       {icon && <i className={`ti ${icon}`} aria-hidden="true" />} {children}
     </button>
@@ -142,12 +143,51 @@ export function Toggle({ on }) {
     <span style={{ position: 'relative', display: 'inline-block', width: 42, height: 24, flexShrink: 0 }}>
       <span style={{
         position: 'absolute', inset: 0, borderRadius: 20,
-        background: on ? colors.green.primary : '#D3D1C7', transition: 'background .2s',
+        background: on ? colors.green.primary : '#D3D1C7',
+        transition: 'background .25s cubic-bezier(.4,0,.2,1)',
       }} />
       <span style={{
         position: 'absolute', top: 3, left: on ? 21 : 3, width: 18, height: 18,
-        background: '#fff', borderRadius: '50%', transition: 'left .2s',
+        background: '#fff', borderRadius: '50%',
+        transition: 'left .25s cubic-bezier(.4,0,.2,1)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
       }} />
     </span>
   )
+}
+
+// Animated number counter — counts from 0 (or previous) to target
+export function AnimatedNumber({ value, duration = 600, suffix = '' }) {
+  const numVal = parseFloat(String(value).replace(',', '.'))
+  const isNum = !isNaN(numVal)
+  const [display, setDisplay] = useState(isNum ? 0 : value)
+  const rafRef = useRef(null)
+  const startRef = useRef(null)
+  const fromRef = useRef(0)
+
+  useEffect(() => {
+    if (!isNum) { setDisplay(value); return }
+    fromRef.current = typeof display === 'number' ? display : 0
+    startRef.current = null
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+
+    function step(ts) {
+      if (!startRef.current) startRef.current = ts
+      const elapsed = ts - startRef.current
+      const progress = Math.min(elapsed / duration, 1)
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3)
+      const current = fromRef.current + (numVal - fromRef.current) * eased
+      setDisplay(current)
+      if (progress < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [numVal]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!isNum) return <>{value}{suffix}</>
+  const formatted = Number.isInteger(numVal)
+    ? String(Math.round(display))
+    : (Math.round(display * 10) / 10).toString().replace('.', ',')
+  return <>{formatted}{suffix}</>
 }
