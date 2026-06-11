@@ -49,8 +49,8 @@ export function computeStats(episodes) {
 
 // Série temporelle pour le dashboard (semaine / mois / année)
 // Renvoie { bars: [{v, c}], labels: [] } où v = intensité repère, c = palier
-export function buildSeries(episodes, view) {
-  const now = new Date()
+export function buildSeries(episodes, view, offset = 0) {
+  const ref = getRefDate(view, offset)
   const byDay = {}
   episodes.forEach((e) => {
     const k = dayKey(e.createdAt)
@@ -62,9 +62,9 @@ export function buildSeries(episodes, view) {
 
   if (view === 's') {
     const labels = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-    const monday = new Date(now)
-    const dow = (now.getDay() + 6) % 7
-    monday.setDate(now.getDate() - dow)
+    const monday = new Date(ref)
+    const dow = (ref.getDay() + 6) % 7
+    monday.setDate(ref.getDate() - dow)
     const bars = labels.map((_, i) => {
       const d = new Date(monday); d.setDate(monday.getDate() + i)
       const eps = byDay[dayKey(d)] || []
@@ -77,7 +77,7 @@ export function buildSeries(episodes, view) {
   if (view === 'm') {
     const labels = ['S1', 'S2', 'S3', 'S4']
     const bars = labels.map((_, w) => {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1 + w * 7)
+      const start = new Date(ref.getFullYear(), ref.getMonth(), 1 + w * 7)
       let maxI = 0, count = 0
       for (let d = 0; d < 7; d++) {
         const day = new Date(start); day.setDate(start.getDate() + d)
@@ -95,7 +95,7 @@ export function buildSeries(episodes, view) {
     let maxI = 0, count = 0
     Object.entries(byDay).forEach(([k, eps]) => {
       const d = new Date(k)
-      if (d.getFullYear() === now.getFullYear() && d.getMonth() === m) {
+      if (d.getFullYear() === ref.getFullYear() && d.getMonth() === m) {
         eps.forEach((e) => { maxI = Math.max(maxI, e.intensity || 0); count++ })
       }
     })
@@ -161,10 +161,11 @@ export function filterByPeriod(episodes, period, offset = 0) {
 }
 
 // Episodes du jour tries par heure, avec champ `hour` ajoute
-export function buildDaySeries(episodes) {
-  const todayKey = dayKey(new Date())
+export function buildDaySeries(episodes, offset = 0) {
+  const ref = getRefDate('j', offset)
+  const refKey = dayKey(ref)
   return episodes
-    .filter((e) => dayKey(e.createdAt) === todayKey)
+    .filter((e) => dayKey(e.createdAt) === refKey)
     .map((e) => ({ ...e, hour: formatHour(e.createdAt) }))
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
 }

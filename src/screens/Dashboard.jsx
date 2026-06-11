@@ -4,7 +4,7 @@ import { Screen, ScreenHeader, StreakBadge, Segmented, AnimatedNumber } from '..
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
-import { computeStats, buildSeries, buildDaySeries, filterByPeriod, withoutBienetre, formatHour } from '../data/stats'
+import { computeStats, buildSeries, buildDaySeries, filterByPeriod, periodLabel, withoutBienetre, formatHour } from '../data/stats'
 import { conditions } from '../data/conditions'
 
 const BAR_COLOR = {
@@ -58,13 +58,13 @@ function EpisodeList({ episodes }) {
     return (
       <div style={{ textAlign: 'center', padding: '24px 10px' }}>
         <i className="ti ti-calendar-event" style={{ fontSize: 30, color: colors.green.leafLight }} aria-hidden="true" />
-        <p style={{ fontSize: 13, color: colors.text.muted, marginTop: 10 }}>Aucun episode aujourd'hui</p>
+        <p style={{ fontSize: 13, color: colors.text.muted, marginTop: 10 }}>Aucun episode sur cette periode</p>
       </div>
     )
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {episodes.map((ep) => {
+      {episodes.map((ep, i) => {
         const condLabel = conditions[ep.condition]?.label || ep.condition
         const hour = ep.hour || formatHour(ep.createdAt)
         return (
@@ -95,17 +95,38 @@ function StatCard({ label, value, suffix }) {
   )
 }
 
+function NavBtn({ icon, onClick, label, disabled }) {
+  return (
+    <button onClick={onClick} aria-label={label} disabled={disabled}
+      style={{
+        border: 'none', background: colors.green.soft, borderRadius: 8,
+        width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.3 : 1,
+        color: colors.green.primaryDark, fontSize: 16,
+      }}>
+      <i className={`ti ${icon}`} aria-hidden="true" />
+    </button>
+  )
+}
+
 export default function Dashboard({ onLog, bp = 'mobile' }) {
   const { episodes, profile } = useStore()
   const [view, setView] = useState('s')
+  const [offset, setOffset] = useState(0)
   const wide = bp === 'desktop'
 
   const real = withoutBienetre(episodes)
   const streak = currentStreak(episodes)
-  const filtered = filterByPeriod(real, view)
+  const filtered = filterByPeriod(real, view, offset)
   const stats = computeStats(filtered)
-  const series = view !== 'j' ? buildSeries(real, view) : null
-  const dayEpisodes = view === 'j' ? buildDaySeries(real) : []
+  const series = view !== 'j' ? buildSeries(real, view, offset) : null
+  const dayEpisodes = view === 'j' ? buildDaySeries(real, offset) : []
+  const pLabel = periodLabel(view, offset)
+
+  function handleViewChange(v) {
+    setView(v)
+    setOffset(0)
+  }
 
   if (real.length === 0) {
     return (
@@ -133,7 +154,22 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
     <>
       <Segmented
         options={[{ value: 'j', label: 'Jour' }, { value: 's', label: 'Semaine' }, { value: 'm', label: 'Mois' }, { value: 'a', label: 'Annee' }]}
-        value={view} onChange={setView} />
+        value={view} onChange={handleViewChange} />
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
+        <NavBtn icon="ti-chevron-left" onClick={() => setOffset((o) => o - 1)} label="Periode precedente" />
+        <button onClick={() => setOffset(0)}
+          style={{
+            border: 'none', background: offset === 0 ? colors.green.soft : colors.green.softer,
+            borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 600,
+            color: colors.green.primaryDark, cursor: 'pointer', fontFamily: 'inherit',
+            minWidth: 140, textAlign: 'center',
+          }}>
+          {pLabel}
+        </button>
+        <NavBtn icon="ti-chevron-right" onClick={() => setOffset((o) => Math.min(o + 1, 0))} label="Periode suivante" disabled={offset >= 0} />
+      </div>
+
       {view === 'j' ? (
         <EpisodeList episodes={dayEpisodes} />
       ) : (
