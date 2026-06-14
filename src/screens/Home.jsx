@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { colors, radius, shadow } from '../theme/tokens'
 import { Screen, StreakBadge, PrimaryButton, AnimatedNumber, ConfirmDialog, useToast } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
@@ -17,9 +17,13 @@ const CYCLE_COLORS = {
 const GARDEN_GOAL = 7
 
 export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
-  const { episodes, profile, updateProfile, addEpisode, editEpisode } = useStore()
+  const { episodes, profile, updateProfile, addEpisode, editEpisode, shortcuts, removeShortcut } = useStore()
   const toast = useToast()
   const [confirmHarvest, setConfirmHarvest] = useState(false)
+  const [activeShortcut, setActiveShortcut] = useState(null)
+  const [shortcutIntensity, setShortcutIntensity] = useState(5)
+  const [confirmDeleteShortcut, setConfirmDeleteShortcut] = useState(null)
+  const longPressRef = useRef(null)
   const gardenDays = gardenLoggedDays(episodes, profile.gardenStartDate)
   const gardenDayCount = gardenDays.size
   const gardenComplete = gardenDayCount >= GARDEN_GOAL
@@ -53,6 +57,42 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
       extra: [],
     })
     toast('Journee enregistree, continue comme ca !', 'success')
+  }
+
+  function handleShortcutTap(sc) {
+    setActiveShortcut(sc)
+    setShortcutIntensity(5)
+  }
+
+  function handleShortcutSave() {
+    if (!activeShortcut) return
+    addEpisode({
+      condition: activeShortcut.condition,
+      zones: activeShortcut.zones || [],
+      intensity: shortcutIntensity,
+      duration: '',
+      triggers: [],
+      treatment: activeShortcut.treatment || 'Aucun',
+      efficacy: null,
+      extra: activeShortcut.extra || [],
+      ...(activeShortcut.customLabel ? { customLabel: activeShortcut.customLabel } : {}),
+    })
+    toast('Episode enregistre', 'success')
+    setActiveShortcut(null)
+  }
+
+  function handleShortcutLongPressStart(sc) {
+    longPressRef.current = setTimeout(() => {
+      setConfirmDeleteShortcut(sc)
+      longPressRef.current = null
+    }, 500)
+  }
+
+  function handleShortcutLongPressEnd() {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current)
+      longPressRef.current = null
+    }
   }
 
   const gardenProgressRaw = gardenDayCount === 0
@@ -150,6 +190,37 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           +{pendingEfficacy.length - 2} autre{pendingEfficacy.length - 2 > 1 ? 's' : ''}
         </div>
       )}
+    </div>
+  )
+
+  const shortcutsBlock = shortcuts.length > 0 && (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: colors.text.faint, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <i className="ti ti-bolt" style={{ fontSize: 13 }} aria-hidden="true" /> Raccourcis
+      </div>
+      <div style={{
+        display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4,
+        WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
+      }}>
+        {shortcuts.map((sc) => (
+          <button key={sc.id}
+            onClick={() => handleShortcutTap(sc)}
+            onPointerDown={() => handleShortcutLongPressStart(sc)}
+            onPointerUp={handleShortcutLongPressEnd}
+            onPointerLeave={handleShortcutLongPressEnd}
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: radius.pill,
+              border: `1.5px solid ${colors.amber.border}`,
+              background: colors.amber.bg, color: colors.amber.text,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+              whiteSpace: 'nowrap', userSelect: 'none',
+            }}>
+            <i className="ti ti-bolt" style={{ fontSize: 14 }} aria-hidden="true" />
+            {sc.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 
@@ -251,6 +322,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
               {(profile.moonOn || profile.planetsOn) && <PlanetaryWidget compact showMoon={profile.moonOn} showPlanets={profile.planetsOn} />}
             </div>
           </div>
+          {shortcutsBlock}
           {buttonsBlock}
         </>
       ) : (
@@ -275,10 +347,65 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
             </div>
           )}
 
+          {shortcutsBlock}
+
           <div style={{ flex: 1 }} />
           {buttonsBlock}
         </>
       )}
+
+      {/* Mini-modal intensite pour raccourci */}
+      {activeShortcut && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.35)',
+        }} onClick={() => setActiveShortcut(null)} role="presentation">
+          <div className="anim-slideUp" onClick={(e) => e.stopPropagation()} style={{
+            background: colors.green.surface, borderRadius: `${radius.lg} ${radius.lg} 0 0`,
+            padding: '24px 22px 28px', width: '100%', maxWidth: 420,
+            boxShadow: shadow.xl,
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: colors.text.title, marginBottom: 4 }}>
+              {activeShortcut.label}
+            </div>
+            <div style={{ fontSize: 12, color: colors.text.faint, marginBottom: 18 }}>
+              Ajuste l'intensite puis enregistre
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ fontSize: 13, color: colors.text.muted }}>Intensite</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: colors.text.body }}>{shortcutIntensity}/10</span>
+            </div>
+            <input type="range" min={0} max={10} step={1} value={shortcutIntensity}
+              aria-label="Intensite de l'episode"
+              onChange={(e) => setShortcutIntensity(Number(e.target.value))}
+              style={{ width: '100%', marginBottom: 20 }} />
+            <button onClick={handleShortcutSave} style={{
+              width: '100%', border: 'none', background: colors.green.primary, color: '#fff',
+              padding: 14, borderRadius: radius.lg, fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', boxShadow: shadow.button,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              <i className="ti ti-check" aria-hidden="true" /> Enregistrer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation suppression raccourci */}
+      <ConfirmDialog
+        open={!!confirmDeleteShortcut}
+        title="Supprimer ce raccourci ?"
+        message={confirmDeleteShortcut ? `Le raccourci "${confirmDeleteShortcut.label}" sera supprime.` : ''}
+        confirmLabel="Supprimer"
+        danger
+        onConfirm={() => {
+          removeShortcut(confirmDeleteShortcut.id)
+          toast('Raccourci supprime', 'success')
+          setConfirmDeleteShortcut(null)
+        }}
+        onCancel={() => setConfirmDeleteShortcut(null)}
+      />
     </Screen>
   )
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useRef } from 'react'
 import {
   loadEpisodes, saveEpisode as persistEpisode, updateEpisode as persistUpdate,
   deleteEpisode as persistDelete, loadProfile, saveProfile as persistProfile,
+  loadShortcuts, saveShortcut as persistShortcut, removeShortcut as persistRemoveShortcut,
 } from './storage'
 
 const StoreContext = createContext(null)
@@ -9,6 +10,7 @@ const StoreContext = createContext(null)
 export function StoreProvider({ children, onStorageError }) {
   const [episodes, setEpisodes] = useState(() => loadEpisodes())
   const [profile, setProfile] = useState(() => loadProfile())
+  const [shortcuts, setShortcuts] = useState(() => loadShortcuts())
   const errorCb = useRef(onStorageError)
   errorCb.current = onStorageError
 
@@ -53,8 +55,19 @@ export function StoreProvider({ children, onStorageError }) {
     })
   }, [notifyError])
 
+  const addShortcut = useCallback((shortcut) => {
+    const saved = persistShortcut(shortcut)
+    setShortcuts((prev) => [...prev, saved])
+    return saved
+  }, [])
+
+  const removeShortcut = useCallback((id) => {
+    persistRemoveShortcut(id)
+    setShortcuts((prev) => prev.filter((s) => s.id !== id))
+  }, [])
+
   return (
-    <StoreContext.Provider value={{ episodes, addEpisode, editEpisode, removeEpisode, profile, updateProfile }}>
+    <StoreContext.Provider value={{ episodes, addEpisode, editEpisode, removeEpisode, profile, updateProfile, shortcuts, addShortcut, removeShortcut }}>
       {children}
     </StoreContext.Provider>
   )

@@ -59,6 +59,30 @@ export function replaceAllEpisodes(episodes) {
   }
 }
 
+// ---- Raccourcis ----
+
+function shortcutsKey() { return `${ns()}.shortcuts.v1` }
+
+export function loadShortcuts() {
+  try {
+    const raw = localStorage.getItem(shortcutsKey())
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+export function saveShortcut(shortcut) {
+  const list = loadShortcuts()
+  const withId = { id: crypto.randomUUID(), ...shortcut }
+  list.push(withId)
+  localStorage.setItem(shortcutsKey(), JSON.stringify(list))
+  return withId
+}
+
+export function removeShortcut(id) {
+  const list = loadShortcuts().filter(s => s.id !== id)
+  localStorage.setItem(shortcutsKey(), JSON.stringify(list))
+}
+
 // ---- Profil ----
 
 const DEFAULT_PROFILE = {

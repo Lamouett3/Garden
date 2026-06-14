@@ -12,7 +12,7 @@ const COND_ICONS = {
 }
 
 export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
-  const { addEpisode, profile } = useStore()
+  const { addEpisode, addShortcut, profile } = useStore()
   const toast = useToast()
   const [condKey, setCondKey] = useState(null)
   const [search, setSearch] = useState('')
@@ -27,6 +27,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const [customLabel, setCustomLabel] = useState('')
   const [customExtra, setCustomExtra] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showShortcutPrompt, setShowShortcutPrompt] = useState(false)
 
   const cond = condKey ? conditions[condKey] : null
   const wide = bp === 'desktop'
@@ -54,10 +55,31 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
     const saved = addEpisode(episode)
     if (saved) {
       toast('Episode enregistre', 'success')
-      setTimeout(() => onSaved?.(), 350)
+      setShowShortcutPrompt(true)
     } else {
       setSaving(false)
     }
+  }
+
+  const handleSaveShortcut = () => {
+    const label = (cond.custom && customLabel ? customLabel : conditions[condKey].label) +
+      (treatment !== 'Aucun' ? ' — ' + treatment : '')
+    addShortcut({
+      label,
+      condition: condKey,
+      zones,
+      treatment,
+      extra,
+      ...(cond.custom && customLabel ? { customLabel } : {}),
+    })
+    toast('Raccourci enregistre', 'success')
+    setShowShortcutPrompt(false)
+    setTimeout(() => onSaved?.(), 300)
+  }
+
+  const handleSkipShortcut = () => {
+    setShowShortcutPrompt(false)
+    setTimeout(() => onSaved?.(), 100)
   }
 
   // Filtrage des conditions par recherche
@@ -352,6 +374,29 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
             {"Saisie rapide \u00b7 l'efficacite se note plus tard"}
           </p>
         </>
+      )}
+
+      {showShortcutPrompt && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
+          background: colors.green.surface, borderTop: `1.5px solid ${colors.border.soft}`,
+          padding: '16px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ maxWidth: 500, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <i className="ti ti-bolt" style={{ fontSize: 20, color: colors.amber.text, flexShrink: 0 }} aria-hidden="true" />
+            <span style={{ flex: 1, fontSize: 13, color: colors.text.body }}>Enregistrer comme raccourci ?</span>
+            <button onClick={handleSaveShortcut} style={{
+              border: 'none', background: colors.green.primary, color: '#fff',
+              padding: '8px 16px', borderRadius: radius.md, fontSize: 13,
+              fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Oui</button>
+            <button onClick={handleSkipShortcut} style={{
+              border: `1.5px solid ${colors.border.soft}`, background: 'transparent',
+              color: colors.text.muted, padding: '8px 16px', borderRadius: radius.md,
+              fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Non</button>
+          </div>
+        </div>
       )}
     </Screen>
   )
