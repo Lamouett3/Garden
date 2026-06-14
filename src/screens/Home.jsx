@@ -237,7 +237,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 24, alignItems: 'start', marginBottom: 20 }}>
             <div>
-              <div style={{ background: colors.green.bg, borderRadius: radius.lg, padding: '24px 20px 12px', boxShadow: shadow.card }}>
+              <div style={{ borderRadius: radius.lg, overflow: 'hidden', boxShadow: shadow.card }}>
                 <GrowingGarden days={gardenDayCount} />
               </div>
               <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 8 }}>
@@ -256,9 +256,8 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
       ) : (
         <>
           <div style={{
-            background: colors.green.bg, borderRadius: radius.lg,
-            padding: '16px 8px 6px', marginBottom: 8,
-            boxShadow: shadow.card,
+            borderRadius: radius.lg, overflow: 'hidden',
+            marginBottom: 8, boxShadow: shadow.card,
           }}>
             <GrowingGarden days={gardenDayCount} />
           </div>

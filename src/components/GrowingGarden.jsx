@@ -6,6 +6,8 @@
 // herbe animée, progression bourgeon → bouton → fleur.
 // Floraison progressive dès le jour 3.
 // Décor météo dynamique via géolocalisation + Open-Meteo.
+// Ciel dynamique (heure du jour), sol enrichi, faune progressive,
+// récompenses jour 7.
 // Props : days (nombre de jours distincts signalés)
 // =============================================================
 
@@ -59,6 +61,16 @@ const POLLEN_CFG = [
   { x: 250, delay: '3s', dur: '9s', drift: 7 },
 ]
 
+const EXTRA_POLLEN_CFG = [
+  { x: 30, delay: '1s', dur: '10s', drift: 6 },
+  { x: 200, delay: '3.5s', dur: '8.5s', drift: -7 },
+  { x: 130, delay: '0.5s', dur: '11.5s', drift: 9 },
+  { x: 260, delay: '2s', dur: '9.5s', drift: -5 },
+  { x: 70, delay: '5.5s', dur: '10.5s', drift: 4 },
+  { x: 180, delay: '4.5s', dur: '7.5s', drift: -8 },
+  { x: 240, delay: '1.5s', dur: '12s', drift: 6 },
+]
+
 const SVG_STYLE = `
 .pg-plant{transform-box:fill-box;transform-origin:center bottom;animation:pgGrow .9s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes pgGrow{0%{transform:scaleY(0);opacity:0}40%{opacity:1}100%{transform:scaleY(1)}}
@@ -67,6 +79,381 @@ const SVG_STYLE = `
 .pg-fadein{animation:pgFadeIn 1.5s ease both}
 @keyframes pgFadeIn{0%{opacity:0}100%{opacity:1}}
 `
+
+// --- Time of day ---
+
+function getTimeOfDay() {
+  const h = new Date().getHours()
+  if (h >= 6 && h < 8) return 'dawn'
+  if (h >= 8 && h < 18) return 'day'
+  if (h >= 18 && h < 20) return 'dusk'
+  return 'night'
+}
+
+const SKY_GRADIENTS = {
+  dawn:  { top: '#A8C4D8', mid: '#E8C4B8', bot: '#F0D8C8' },
+  day:   { top: '#B8D8EC', mid: '#D4E8F0', bot: '#E8F0F0' },
+  dusk:  { top: '#8B6FA8', mid: '#D49060', bot: '#E8A870' },
+  night: { top: '#1A2440', mid: '#2A3858', bot: '#3A4868' },
+}
+
+const HILL_COLORS = {
+  dawn:  ['#C8D8C0', '#B8CCB0'],
+  day:   ['#D4E4D0', '#C8DCC4'],
+  dusk:  ['#9A8878', '#8A7868'],
+  night: ['#2A3830', '#223028'],
+}
+
+// --- Phase 1 : Sky & Atmosphere ---
+
+function SkyGradientDefs({ timeOfDay }) {
+  const g = SKY_GRADIENTS[timeOfDay]
+  return (
+    <>
+      <linearGradient id="sky-gradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={g.top} />
+        <stop offset="55%" stopColor={g.mid} />
+        <stop offset="100%" stopColor={g.bot} />
+      </linearGradient>
+      <linearGradient id="ground-gradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={C.ground} />
+        <stop offset="60%" stopColor={C.groundInner} />
+        <stop offset="100%" stopColor="#C4D4C6" />
+      </linearGradient>
+      <radialGradient id="harvest-glow" cx="50%" cy="60%" r="50%">
+        <stop offset="0%" stopColor="#F7DCA0" stopOpacity="0.18" />
+        <stop offset="70%" stopColor="#F7DCA0" stopOpacity="0.06" />
+        <stop offset="100%" stopColor="#F7DCA0" stopOpacity="0" />
+      </radialGradient>
+    </>
+  )
+}
+
+function SkyBackground({ timeOfDay }) {
+  return <rect x="0" y="0" width="300" height="190" fill="url(#sky-gradient)" />
+}
+
+function DistantHills({ timeOfDay }) {
+  const cols = HILL_COLORS[timeOfDay]
+  return (
+    <g className="pg-fadein">
+      <path d="M0 140Q40 118 80 130Q120 115 160 128Q200 112 240 125Q280 118 300 132L300 190L0 190Z"
+        fill={cols[0]} opacity="0.3" />
+      <path d="M0 145Q50 128 100 138Q150 122 200 135Q250 125 300 140L300 190L0 190Z"
+        fill={cols[1]} opacity="0.25" />
+    </g>
+  )
+}
+
+function Stars() {
+  const stars = [
+    { x: 25, y: 12, r: 0.8, d: '0s' }, { x: 68, y: 28, r: 0.6, d: '0.8s' },
+    { x: 112, y: 8, r: 0.9, d: '1.5s' }, { x: 155, y: 35, r: 0.5, d: '0.3s' },
+    { x: 198, y: 15, r: 0.7, d: '2s' }, { x: 240, y: 42, r: 0.6, d: '1.2s' },
+    { x: 278, y: 10, r: 0.8, d: '0.6s' }, { x: 45, y: 50, r: 0.5, d: '1.8s' },
+    { x: 130, y: 55, r: 0.7, d: '2.5s' }, { x: 210, y: 60, r: 0.5, d: '0.4s' },
+  ]
+  return (
+    <g className="pg-fadein">
+      {stars.map((s, i) => (
+        <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#FFFFFF" opacity="0.5">
+          <animate attributeName="opacity" values="0.3;0.9;0.3" dur={`${2.5 + (i % 3) * 0.8}s`}
+            begin={s.d} repeatCount="indefinite" />
+        </circle>
+      ))}
+    </g>
+  )
+}
+
+function Fireflies() {
+  const flies = [
+    { x: 40, y: 70, dx: 12, dy: -8, dur: '6s', d: '0s' },
+    { x: 130, y: 85, dx: -10, dy: -12, dur: '8s', d: '1s' },
+    { x: 220, y: 60, dx: 8, dy: 10, dur: '7s', d: '2.5s' },
+    { x: 90, y: 95, dx: -6, dy: -10, dur: '9s', d: '0.5s' },
+    { x: 260, y: 80, dx: -14, dy: -6, dur: '7.5s', d: '1.8s' },
+  ]
+  return (
+    <g className="pg-fadein">
+      {flies.map((f, i) => (
+        <circle key={i} cx={f.x} cy={f.y} r={1.2} fill="#E8F0A0" opacity="0">
+          <animate attributeName="cx" values={`${f.x};${f.x + f.dx};${f.x}`}
+            dur={f.dur} begin={f.d} repeatCount="indefinite" />
+          <animate attributeName="cy" values={`${f.y};${f.y + f.dy};${f.y}`}
+            dur={f.dur} begin={f.d} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.7;0.3;0.8;0"
+            dur={f.dur} begin={f.d} repeatCount="indefinite" />
+        </circle>
+      ))}
+    </g>
+  )
+}
+
+// --- Phase 2 : Sol enrichi ---
+
+function EnrichedGround({ days }) {
+  return (
+    <g>
+      {/* Terrain principal — forme organique bord a bord */}
+      <path d="M0 158C20 152 50 148 80 150C110 152 130 146 150 148C170 150 200 144 230 148C260 152 285 150 300 154L300 190L0 190Z"
+        fill="url(#ground-gradient)" />
+      {/* Couche intermediaire terre — irreguliere */}
+      <path d="M10 162C40 156 70 154 100 156C130 158 155 152 180 154C210 156 240 152 280 158L290 190L10 190Z"
+        fill="#C8D4CA" opacity="0.4" />
+      {/* Couche interieure mousse — organique */}
+      <path d="M30 166C60 160 90 158 120 161C150 164 175 158 210 160C240 162 265 160 275 164L270 190L30 190Z"
+        fill="#B8CCBA" opacity="0.25" />
+
+      {/* Mousse dispersee — taches organiques */}
+      <ellipse cx="18" cy="166" rx="14" ry="4" fill="#A8C4A8" opacity="0.15" />
+      <ellipse cx="280" cy="164" rx="12" ry="3.5" fill="#A0BC9C" opacity="0.13" />
+      <ellipse cx="95" cy="168" rx="10" ry="3" fill="#A8C4A8" opacity="0.12" />
+      <ellipse cx="200" cy="167" rx="8" ry="2.5" fill="#A0BC9C" opacity="0.1" />
+
+      {/* Petits cailloux — toujours visibles */}
+      <ellipse cx="60" cy="162" rx="2.2" ry="1.2" fill="#B8B4A8" opacity="0.35" />
+      <ellipse cx="200" cy="164" rx="1.8" ry="1" fill="#C0BCA8" opacity="0.3" />
+      <ellipse cx="245" cy="161" rx="2.5" ry="1.1" fill="#ACA89C" opacity="0.3" />
+      <ellipse cx="120" cy="166" rx="1.5" ry="0.9" fill="#B4B0A4" opacity="0.25" />
+
+      {/* Feuilles tombees — jour 2+ */}
+      {days >= 2 && <>
+        <path d="M42 163Q45 159 48 162Q45 164 42 163Z" fill="#D4A868" opacity="0.25" />
+        <path d="M228 165Q231 161 234 164Q231 166 228 165Z" fill="#C89858" opacity="0.2" />
+        <path d="M168 167Q171 163 174 166Q171 168 168 167Z" fill="#CCAA70" opacity="0.18" />
+      </>}
+
+      {/* Champignons — jour 4+ */}
+      {days >= 4 && <>
+        <g opacity="0.4">
+          <rect x="23" y="157" width="1.2" height="4" rx="0.5" fill="#D8CCC0" />
+          <ellipse cx="23.6" cy="157" rx="3" ry="2" fill="#E8D8C8" />
+          <ellipse cx="23.6" cy="157.2" rx="2.5" ry="1.2" fill="#F0E8E0" opacity="0.5" />
+        </g>
+        <g opacity="0.35">
+          <rect x="273" y="159" width="1" height="3.5" rx="0.4" fill="#D0C4B8" />
+          <ellipse cx="273.5" cy="159" rx="2.5" ry="1.8" fill="#E0D0C0" />
+          <ellipse cx="273.5" cy="159.2" rx="2" ry="1" fill="#ECE4DC" opacity="0.5" />
+        </g>
+      </>}
+
+      {/* Trefles — jour 1+ */}
+      {days >= 1 && <>
+        <g opacity="0.35">
+          {[0, 120, 240].map((a, i) => {
+            const rad = (a * Math.PI) / 180
+            return <ellipse key={i} cx={75 + 2.5 * Math.cos(rad)} cy={164 + 2.5 * Math.sin(rad)}
+              rx="1.8" ry="1.8" fill="#7FB889" />
+          })}
+        </g>
+        <g opacity="0.3">
+          {[0, 120, 240].map((a, i) => {
+            const rad = (a * Math.PI) / 180
+            return <ellipse key={i} cx={215 + 2.2 * Math.cos(rad)} cy={166 + 2.2 * Math.sin(rad)}
+              rx="1.5" ry="1.5" fill="#88C094" />
+          })}
+        </g>
+        <g opacity="0.25">
+          {[0, 120, 240].map((a, i) => {
+            const rad = (a * Math.PI) / 180
+            return <ellipse key={i} cx={145 + 2 * Math.cos(rad)} cy={168 + 2 * Math.sin(rad)}
+              rx="1.4" ry="1.4" fill="#80B88C" />
+          })}
+        </g>
+      </>}
+    </g>
+  )
+}
+
+// --- Phase 3 : Ombres des plantes ---
+
+function PlantShadow({ x, maturity }) {
+  const rx = maturity === 0 ? 4 : maturity === 1 ? 7 : 10
+  return (
+    <ellipse cx={x} cy="162" rx={rx} ry={1.8} fill="#3A4A3E"
+      opacity={maturity === 0 ? 0.06 : maturity === 1 ? 0.08 : 0.1} />
+  )
+}
+
+// --- Phase 3 : Faune progressive ---
+
+function Ladybug() {
+  return (
+    <g opacity="0.6" className="pg-fadein" style={{ animationDelay: '1.5s' }}>
+      <animateMotion path="M60,161L100,161L60,161" dur="20s" repeatCount="indefinite" />
+      {/* Corps */}
+      <ellipse cx="0" cy="0" rx="2.5" ry="2" fill="#D04040" />
+      {/* Tete */}
+      <ellipse cx="-2.8" cy="0" rx="1.2" ry="1.1" fill="#2E2E2E" />
+      {/* Ligne centrale */}
+      <line x1="0" y1="-2" x2="0" y2="2" stroke="#2E2E2E" strokeWidth="0.3" />
+      {/* Points */}
+      <circle cx="-0.8" cy="-0.7" r="0.5" fill="#2E2E2E" />
+      <circle cx="0.8" cy="0.6" r="0.5" fill="#2E2E2E" />
+      <circle cx="1.2" cy="-0.4" r="0.4" fill="#2E2E2E" />
+      {/* Antennes */}
+      <line x1="-3.5" y1="-0.5" x2="-4.5" y2="-2" stroke="#2E2E2E" strokeWidth="0.2" />
+      <line x1="-3.5" y1="0.5" x2="-4.5" y2="2" stroke="#2E2E2E" strokeWidth="0.2" />
+    </g>
+  )
+}
+
+function Dragonfly() {
+  return (
+    <g opacity="0.45" className="pg-fadein" style={{ animationDelay: '3s' }}>
+      <animateMotion
+        path="M240,55C200,40 160,65 120,45C160,35 200,60 240,55"
+        dur="16s" rotate="auto" repeatCount="indefinite" />
+      {/* Corps */}
+      <ellipse cx="0" cy="0" rx="0.6" ry="4" fill="#5A9A8A" />
+      {/* Queue */}
+      <line x1="0" y1="4" x2="0" y2="9" stroke="#5A9A8A" strokeWidth="0.6" strokeLinecap="round" />
+      {/* Ailes gauche */}
+      <ellipse cx="-4" cy="-1" rx="5" ry="1.2" fill="#C8E8E0" opacity="0.35"
+        transform="rotate(-10 -4 -1)">
+        <animate attributeName="opacity" values="0.25;0.45;0.25" dur="0.8s" repeatCount="indefinite" />
+      </ellipse>
+      <ellipse cx="-3.5" cy="1.5" rx="4" ry="1" fill="#C8E8E0" opacity="0.3"
+        transform="rotate(5 -3.5 1.5)">
+        <animate attributeName="opacity" values="0.2;0.4;0.2" dur="0.8s" begin="0.1s" repeatCount="indefinite" />
+      </ellipse>
+      {/* Ailes droit */}
+      <ellipse cx="4" cy="-1" rx="5" ry="1.2" fill="#C8E8E0" opacity="0.35"
+        transform="rotate(10 4 -1)">
+        <animate attributeName="opacity" values="0.25;0.45;0.25" dur="0.8s" begin="0.05s" repeatCount="indefinite" />
+      </ellipse>
+      <ellipse cx="3.5" cy="1.5" rx="4" ry="1" fill="#C8E8E0" opacity="0.3"
+        transform="rotate(-5 3.5 1.5)">
+        <animate attributeName="opacity" values="0.2;0.4;0.2" dur="0.8s" begin="0.15s" repeatCount="indefinite" />
+      </ellipse>
+      {/* Yeux */}
+      <circle cx="-1" cy="-4" r="0.6" fill="#3A7A6A" />
+      <circle cx="1" cy="-4" r="0.6" fill="#3A7A6A" />
+    </g>
+  )
+}
+
+function SmallBird() {
+  return (
+    <g opacity="0.5" className="pg-fadein" style={{ animationDelay: '2.5s' }}>
+      <animateMotion
+        path="M20,40C80,25 150,50 220,30C280,45 220,55 150,35C80,50 20,40 20,40"
+        dur="24s" rotate="auto" repeatCount="indefinite" />
+      {/* Corps */}
+      <ellipse cx="0" cy="0" rx="3" ry="2" fill="#8A7060" />
+      {/* Tete */}
+      <circle cx="-3.2" cy="-0.8" r="1.5" fill="#9A8070" />
+      {/* Bec */}
+      <path d="M-4.5,-1L-6,-0.8L-4.5,-0.4Z" fill="#E8A848" />
+      {/* Oeil */}
+      <circle cx="-3.6" cy="-1.2" r="0.4" fill="#2E2E2E" />
+      {/* Aile */}
+      <path d="M0,-1.5Q3,-5 5,-2Q3,-0.5 0,-1.5Z" fill="#7A6050" opacity="0.7">
+        <animateTransform attributeName="transform" type="rotate"
+          values="0 0 -1.5;-15 0 -1.5;0 0 -1.5" dur="0.4s" repeatCount="indefinite" />
+      </path>
+      {/* Queue */}
+      <path d="M3,0Q5,2 6,-1Q4,-0.5 3,0Z" fill="#7A6050" opacity="0.6" />
+    </g>
+  )
+}
+
+// --- Phase 3 : Petales ---
+
+function DriftingPetals() {
+  const petals = [
+    { x: 40, color: '#F3C8D2', dur: '12s', d: '0s', dx: 20, rot: 360 },
+    { x: 120, color: '#F7DCA0', dur: '14s', d: '2s', dx: -15, rot: -270 },
+    { x: 200, color: '#C4A8D8', dur: '11s', d: '4s', dx: 18, rot: 300 },
+    { x: 260, color: '#F0A882', dur: '13s', d: '1s', dx: -12, rot: -330 },
+    { x: 80, color: '#FFF8EE', dur: '15s', d: '3s', dx: 14, rot: 280 },
+  ]
+  return (
+    <g className="pg-fadein" style={{ animationDelay: '1s' }}>
+      {petals.map((p, i) => (
+        <ellipse key={i} cx={p.x} cy={-5} rx={1.8} ry={1} fill={p.color} opacity="0">
+          <animate attributeName="cy" values="-5;170" dur={p.dur} begin={p.d} repeatCount="indefinite" />
+          <animate attributeName="cx" values={`${p.x};${p.x + p.dx}`} dur={p.dur} begin={p.d} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0.5;0.4;0" dur={p.dur} begin={p.d} repeatCount="indefinite" />
+          <animateTransform attributeName="transform" type="rotate"
+            values={`0 ${p.x} -5;${p.rot} ${p.x + p.dx} 170`} dur={p.dur} begin={p.d} repeatCount="indefinite" />
+        </ellipse>
+      ))}
+    </g>
+  )
+}
+
+// --- Phase 4 : Rosee ---
+
+function DewDrops() {
+  const drops = [
+    { x: 65, y: 125 }, { x: 140, y: 118 }, { x: 210, y: 122 },
+    { x: 100, y: 130 }, { x: 180, y: 115 },
+  ]
+  return (
+    <g className="pg-fadein">
+      {drops.map((d, i) => (
+        <g key={i}>
+          <circle cx={d.x} cy={d.y} r={1} fill="#E0F0F8" opacity="0.5">
+            <animate attributeName="opacity" values="0.3;0.7;0.3"
+              dur={`${2.5 + i * 0.3}s`} repeatCount="indefinite" />
+          </circle>
+          <circle cx={d.x - 0.3} cy={d.y - 0.4} r={0.3} fill="#FFFFFF" opacity="0.6" />
+        </g>
+      ))}
+    </g>
+  )
+}
+
+// --- Phase 5 : Recompenses jour 7 ---
+
+function HarvestGlow() {
+  return (
+    <rect x="0" y="0" width="300" height="190" fill="url(#harvest-glow)" opacity="0.8">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="4s" repeatCount="indefinite" />
+    </rect>
+  )
+}
+
+function Rainbow() {
+  const bands = [
+    { r: 90, color: '#E07070', w: 2 },
+    { r: 87, color: '#F0A882', w: 2 },
+    { r: 84, color: '#F7DCA0', w: 2 },
+    { r: 81, color: '#7FB089', w: 2 },
+    { r: 78, color: '#B8D8EC', w: 2 },
+    { r: 75, color: '#C4A8D8', w: 2 },
+  ]
+  return (
+    <g opacity="0.12" className="pg-fadein" style={{ animationDelay: '0.5s' }}>
+      {bands.map((b, i) => (
+        <path key={i}
+          d={`M${150 - b.r} 130A${b.r} ${b.r} 0 0 1 ${150 + b.r} 130`}
+          fill="none" stroke={b.color} strokeWidth={b.w} />
+      ))}
+    </g>
+  )
+}
+
+function HarvestSparkles() {
+  const sparkles = [
+    { x: 30, y: 45, d: '0s' }, { x: 70, y: 25, d: '0.8s' },
+    { x: 120, y: 50, d: '1.6s' }, { x: 180, y: 30, d: '0.4s' },
+    { x: 230, y: 55, d: '1.2s' }, { x: 270, y: 40, d: '2s' },
+    { x: 50, y: 70, d: '2.4s' }, { x: 150, y: 20, d: '1.8s' },
+  ]
+  return (
+    <g>
+      {sparkles.map((s, i) => (
+        <g key={i} opacity="0">
+          <animate attributeName="opacity" values="0;0.8;0" dur="3s" begin={s.d} repeatCount="indefinite" />
+          <line x1={s.x - 2} y1={s.y} x2={s.x + 2} y2={s.y} stroke="#F7DCA0" strokeWidth="0.5" />
+          <line x1={s.x} y1={s.y - 2} x2={s.x} y2={s.y + 2} stroke="#F7DCA0" strokeWidth="0.5" />
+        </g>
+      ))}
+    </g>
+  )
+}
 
 // --- Helpers ---
 
@@ -352,10 +739,11 @@ function GrassTufts() {
   )
 }
 
-function PollenParticles() {
+function PollenParticles({ extra = false }) {
+  const cfg = extra ? [...POLLEN_CFG, ...EXTRA_POLLEN_CFG] : POLLEN_CFG
   return (
     <g>
-      {POLLEN_CFG.map((p, i) => (
+      {cfg.map((p, i) => (
         <circle key={i} cx={p.x} cy={155} r={0.8} fill={C.pollen} opacity="0">
           <animate attributeName="cy" values="155;15" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
           <animate attributeName="cx" values={`${p.x};${p.x + p.drift}`} dur={p.dur} begin={p.delay} repeatCount="indefinite" />
@@ -612,6 +1000,7 @@ export default function GrowingGarden({ days = 0 }) {
     fetchWeather().then((w) => { if (w) setWeather(w) })
   }, [])
 
+  const timeOfDay = getTimeOfDay()
   const plantCount = Math.min(days, 7)
   const hasFlowers = days >= 3
   const positions = Array.from({ length: plantCount }, (_, i) => {
@@ -620,25 +1009,66 @@ export default function GrowingGarden({ days = 0 }) {
   })
 
   return (
-    <svg viewBox="0 0 300 190" style={{ width: '100%' }} role="img"
+    <svg viewBox="0 0 300 190" style={{ width: '100%', display: 'block' }} role="img"
       aria-label={`Jardin de ${days} jour${days > 1 ? 's' : ''} suivi${days > 1 ? 's' : ''}`}>
       <style>{SVG_STYLE}</style>
 
+      {/* Defs : gradients */}
+      <defs>
+        <SkyGradientDefs timeOfDay={timeOfDay} />
+      </defs>
+
+      {/* 1. Ciel */}
+      <SkyBackground timeOfDay={timeOfDay} />
+
+      {/* 2. Collines lointaines */}
+      <DistantHills timeOfDay={timeOfDay} />
+
+      {/* 3. Etoiles / lucioles */}
+      {timeOfDay === 'night' && <Stars />}
+      {timeOfDay === 'dusk' && <Fireflies />}
+
+      {/* 4. Meteo existante */}
       <WeatherDecor weather={weather} />
 
-      <ellipse cx="150" cy="163" rx="148" ry="28" fill={C.ground} />
-      <ellipse cx="150" cy="165" rx="132" ry="18" fill={C.groundInner} opacity="0.5" />
+      {/* 5. Sol enrichi + decorations */}
+      <EnrichedGround days={days} />
 
+      {/* 7. Ombres des plantes */}
+      {positions.map((x, i) => (
+        <PlantShadow key={`sh${i}`} x={x} maturity={getPlantMaturity(i, plantCount, days)} />
+      ))}
+
+      {/* 8. Herbe */}
       {plantCount > 0 && <GrassTufts />}
 
+      {/* 9. Plantes */}
       {positions.map((x, i) => (
         <Plant key={i} x={x} index={i} maturity={getPlantMaturity(i, plantCount, days)} />
       ))}
 
-      {hasFlowers && <PollenParticles />}
+      {/* 10. Rosee (dawn) */}
+      {timeOfDay === 'dawn' && days >= 5 && <DewDrops />}
+
+      {/* 11. Pollen + petales */}
+      {hasFlowers && <PollenParticles extra={days >= 7} />}
+      {days >= 5 && <DriftingPetals />}
+
+      {/* 12. Faune */}
       {hasFlowers && <Butterfly />}
       {days >= 5 && <Bee />}
+      {days >= 2 && <Ladybug />}
+      {days >= 4 && <Dragonfly />}
+      {days >= 6 && <SmallBird />}
 
+      {/* 13. Halo de recolte (jour 7) */}
+      {days >= 7 && <HarvestGlow />}
+      {days >= 7 && <HarvestSparkles />}
+
+      {/* 14. Arc-en-ciel (jour 7) */}
+      {days >= 7 && <Rainbow />}
+
+      {/* Message jour 0 */}
       {days === 0 && (
         <>
           <circle cx="150" cy="158" r="3" fill={C.stemDark} opacity="0.3" />
