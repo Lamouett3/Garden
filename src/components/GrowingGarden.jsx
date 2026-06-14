@@ -316,10 +316,10 @@ const VARIANTS = [Rose, Lavender, Sunflower, Tulip, Daisy, CoralF]
 
 function Plant({ x, index, maturity }) {
   const V = VARIANTS[index % VARIANTS.length]
-  const h = maturity === 0 ? 18 : maturity === 1 ? 30 : 42
+  const h = maturity === 0 ? 22 : maturity === 1 ? 40 : 58
   const wind = WIND[index % WIND.length]
   return (
-    <g transform={`translate(${x},120)`}>
+    <g transform={`translate(${x},160)`}>
       <g className="pg-plant" style={{ animationDelay: `${index * 0.15}s` }}>
         <g>
           <animateTransform attributeName="transform" type="rotate"
@@ -340,12 +340,12 @@ function GrassTufts() {
       {GRASS_POS.map((g, i) => (
         <g key={i}>
           <animateTransform attributeName="transform" type="rotate"
-            values={`0 ${g.x} 120;${g.l * 2} ${g.x} 120;0 ${g.x} 120`}
+            values={`0 ${g.x} 160;${g.l * 2} ${g.x} 160;0 ${g.x} 160`}
             dur={`${2.5 + (i % 3) * 0.5}s`} begin={`${(i % 5) * 0.3}s`} repeatCount="indefinite" />
           <path
-            d={`M${g.x} 120Q${g.x + g.l} ${120 - g.h / 2} ${g.x + g.l * 0.6} ${120 - g.h}`}
+            d={`M${g.x} 160Q${g.x + g.l} ${160 - g.h / 2} ${g.x + g.l * 0.6} ${160 - g.h}`}
             stroke={i % 2 === 0 ? C.grass : C.grassLight}
-            strokeWidth="0.8" fill="none" strokeLinecap="round" />
+            strokeWidth="0.9" fill="none" strokeLinecap="round" />
         </g>
       ))}
     </g>
@@ -356,8 +356,8 @@ function PollenParticles() {
   return (
     <g>
       {POLLEN_CFG.map((p, i) => (
-        <circle key={i} cx={p.x} cy={116} r={0.8} fill={C.pollen} opacity="0">
-          <animate attributeName="cy" values="116;20" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
+        <circle key={i} cx={p.x} cy={155} r={0.8} fill={C.pollen} opacity="0">
+          <animate attributeName="cy" values="155;15" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
           <animate attributeName="cx" values={`${p.x};${p.x + p.drift}`} dur={p.dur} begin={p.delay} repeatCount="indefinite" />
           <animate attributeName="opacity" values="0;0.65;0.5;0" dur={p.dur} begin={p.delay} repeatCount="indefinite" />
         </circle>
@@ -370,7 +370,7 @@ function Butterfly() {
   return (
     <g opacity="0.6">
       <animateMotion
-        path="M40,50C120,28 200,65 270,40C200,28 120,65 40,50"
+        path="M40,65C120,35 200,80 270,50C200,35 120,80 40,65"
         dur="18s" rotate="auto" repeatCount="indefinite" />
       <ellipse cx="0" cy="0" rx="0.6" ry="1.8" fill={C.butterfly} />
       <path d="M-0.5,-0.8C-3.5,-4 -5,-1.5 -3,1C-4.5,0 -5,2.5 -1.5,2Z" fill={C.butterflyWing} opacity="0.6">
@@ -393,7 +393,7 @@ function Bee() {
   return (
     <g opacity="0.55" className="pg-fadein" style={{ animationDelay: '2s' }}>
       <animateMotion
-        path="M200,60C160,35 100,72 60,45C100,30 160,65 200,60"
+        path="M200,75C160,45 100,90 60,55C100,40 160,80 200,75"
         dur="14s" rotate="auto" repeatCount="indefinite" />
       <ellipse cx="0" cy="0" rx="1.8" ry="1.2" fill={C.bee} />
       <line x1="-0.6" y1="0" x2="0.6" y2="0" stroke="#2E4034" strokeWidth="0.4" />
@@ -459,8 +459,8 @@ function WeatherRain() {
       {drops.map((r, i) => (
         <line key={i} x1={r.x} y1={30} x2={r.x - 3} y2={38}
           stroke="#9BAFB0" strokeWidth="0.8" strokeLinecap="round" opacity="0">
-          <animate attributeName="y1" values="30;115" dur="1.2s" begin={r.d} repeatCount="indefinite" />
-          <animate attributeName="y2" values="38;123" dur="1.2s" begin={r.d} repeatCount="indefinite" />
+          <animate attributeName="y1" values="30;152" dur="1.4s" begin={r.d} repeatCount="indefinite" />
+          <animate attributeName="y2" values="38;160" dur="1.4s" begin={r.d} repeatCount="indefinite" />
           <animate attributeName="opacity" values="0;0.5;0.4;0" dur="1.2s" begin={r.d} repeatCount="indefinite" />
         </line>
       ))}
@@ -478,7 +478,7 @@ function WeatherDrizzle() {
       <WeatherClouds variant="light" />
       {drops.map((r, i) => (
         <circle key={i} cx={r.x} cy={32} r={0.6} fill="#9BAFB0" opacity="0">
-          <animate attributeName="cy" values="32;118" dur="2s" begin={r.d} repeatCount="indefinite" />
+          <animate attributeName="cy" values="32;155" dur="2.2s" begin={r.d} repeatCount="indefinite" />
           <animate attributeName="opacity" values="0;0.4;0.3;0" dur="2s" begin={r.d} repeatCount="indefinite" />
         </circle>
       ))}
@@ -499,7 +499,7 @@ function WeatherSnow() {
       <WeatherClouds variant="heavy" />
       {flakes.map((s, i) => (
         <circle key={i} cx={s.x} cy={20} r={1.2} fill="#fff" opacity="0">
-          <animate attributeName="cy" values="20;120" dur="4s" begin={s.d} repeatCount="indefinite" />
+          <animate attributeName="cy" values="20;158" dur="4.5s" begin={s.d} repeatCount="indefinite" />
           <animate attributeName="cx" values={`${s.x};${s.x + s.dx};${s.x + s.dx * 2}`}
             dur="4s" begin={s.d} repeatCount="indefinite" />
           <animate attributeName="opacity" values="0;0.7;0.6;0" dur="4s" begin={s.d} repeatCount="indefinite" />
@@ -539,15 +539,15 @@ function WeatherSun() {
 function WeatherFog() {
   return (
     <g className="pg-fadein">
-      <rect x="0" y="60" width="300" height="80" fill="#D8E0DA" opacity="0.15">
+      <rect x="0" y="80" width="300" height="100" fill="#D8E0DA" opacity="0.15">
         <animate attributeName="opacity" values="0.1;0.22;0.1" dur="6s" repeatCount="indefinite" />
       </rect>
-      <line x1="20" y1="75" x2="280" y2="75" stroke="#C5CDCA" strokeWidth="1.5" strokeLinecap="round" opacity="0.2">
+      <line x1="20" y1="100" x2="280" y2="100" stroke="#C5CDCA" strokeWidth="1.5" strokeLinecap="round" opacity="0.2">
         <animate attributeName="opacity" values="0.15;0.3;0.15" dur="5s" repeatCount="indefinite" />
         <animateTransform attributeName="transform" type="translate"
           values="0,0;4,0;0,0" dur="8s" repeatCount="indefinite" />
       </line>
-      <line x1="10" y1="90" x2="290" y2="90" stroke="#C5CDCA" strokeWidth="1" strokeLinecap="round" opacity="0.15">
+      <line x1="10" y1="120" x2="290" y2="120" stroke="#C5CDCA" strokeWidth="1" strokeLinecap="round" opacity="0.15">
         <animate attributeName="opacity" values="0.1;0.25;0.1" dur="7s" repeatCount="indefinite" />
         <animateTransform attributeName="transform" type="translate"
           values="0,0;-3,0;0,0" dur="10s" repeatCount="indefinite" />
@@ -620,14 +620,14 @@ export default function GrowingGarden({ days = 0 }) {
   })
 
   return (
-    <svg viewBox="0 0 300 140" style={{ width: '100%' }} role="img"
+    <svg viewBox="0 0 300 190" style={{ width: '100%' }} role="img"
       aria-label={`Jardin de ${days} jour${days > 1 ? 's' : ''} suivi${days > 1 ? 's' : ''}`}>
       <style>{SVG_STYLE}</style>
 
       <WeatherDecor weather={weather} />
 
-      <ellipse cx="150" cy="122" rx="145" ry="20" fill={C.ground} />
-      <ellipse cx="150" cy="123" rx="130" ry="14" fill={C.groundInner} opacity="0.5" />
+      <ellipse cx="150" cy="163" rx="148" ry="28" fill={C.ground} />
+      <ellipse cx="150" cy="165" rx="132" ry="18" fill={C.groundInner} opacity="0.5" />
 
       {plantCount > 0 && <GrassTufts />}
 
@@ -641,8 +641,8 @@ export default function GrowingGarden({ days = 0 }) {
 
       {days === 0 && (
         <>
-          <circle cx="150" cy="119" r="2.5" fill={C.stemDark} opacity="0.3" />
-          <text x="150" y="65" textAnchor="middle" fontSize="12" fill="#9DAFA1" fontFamily="Nunito, sans-serif">
+          <circle cx="150" cy="158" r="3" fill={C.stemDark} opacity="0.3" />
+          <text x="150" y="85" textAnchor="middle" fontSize="13" fill="#9DAFA1" fontFamily="Nunito, sans-serif">
             Ton jardin attend sa premiere pousse
           </text>
         </>
