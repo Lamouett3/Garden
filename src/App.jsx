@@ -146,9 +146,10 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
         position: 'sticky', top: 0, zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: isTablet ? '16px 24px' : '14px 16px',
-        background: 'rgba(217,227,218,0.82)',
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: `0.5px solid rgba(214,224,216,0.6)`,
+        background: 'rgba(217,227,218,0.85)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: 'none',
+        boxShadow: '0 1px 8px rgba(0,0,0,0.03)',
         flexShrink: 0,
       }}>
         <button onClick={() => setTab('home')} style={{
@@ -183,7 +184,7 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         padding: isTablet ? '16px 24px 0' : '14px 14px 0',
-        paddingBottom: navH + 18,
+        paddingBottom: navH + 32,
         maxWidth: isTablet ? 680 : 460, width: '100%', margin: '0 auto',
       }}>
         <Screens tab={tab} setTab={setTab} bp={bp} onLogout={handleLogout} />
@@ -191,13 +192,20 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
 
       <ConfirmDialog open={confirmLogout} title="Se deconnecter ?" message="Tu pourras te reconnecter avec ton nom et mot de passe." confirmLabel="Se deconnecter" onConfirm={doLogout} onCancel={() => setConfirmLogout(false)} danger />
 
+      {/* Fondu doux entre le contenu et la barre de navigation */}
+      <div className="no-print" style={{
+        position: 'fixed', bottom: navH, left: 0, right: 0, height: 28,
+        background: `linear-gradient(to bottom, transparent, rgba(251,251,246,0.5))`,
+        pointerEvents: 'none', zIndex: 50,
+      }} />
+
       <nav className="no-print" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(251,251,246,0.88)',
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        borderTop: `0.5px solid rgba(214,224,216,0.6)`,
+        background: 'rgba(251,251,246,0.92)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderTop: 'none',
         display: 'flex', justifyContent: 'center', gap: 2, padding: '6px 8px 14px',
-        boxShadow: shadow.nav,
+        boxShadow: '0 -1px 12px rgba(0,0,0,0.04)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-around', width: '100%', maxWidth: 520 }}>
           {TABS.map((t) => {

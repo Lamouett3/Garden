@@ -4,13 +4,18 @@ import { colors, radius, font, shadow } from '../theme/tokens'
 // Conteneur d'écran responsive.
 export function Screen({ children, bp = 'mobile', wide = false }) {
   const isMobile = bp === 'mobile'
-  const maxW = wide ? (bp === 'desktop' ? 760 : 640) : bp === 'desktop' ? 560 : 480
+  const isTablet = bp === 'tablet'
+  const isDesktop = bp === 'desktop'
+  const hasBottomNav = isMobile || isTablet
+  const maxW = wide ? (isDesktop ? 760 : 640) : isDesktop ? 560 : 480
 
   if (isMobile) {
     return (
       <div className="anim-fadeIn" style={{
-        background: colors.green.surface, borderRadius: radius.card,
-        padding: '20px 18px 22px', fontFamily: font.family, width: '100%',
+        background: colors.green.surface,
+        borderRadius: radius.card,
+        padding: '20px 18px 22px',
+        fontFamily: font.family, width: '100%',
         flex: 1, display: 'flex', flexDirection: 'column',
       }}>
         {children}
@@ -20,8 +25,9 @@ export function Screen({ children, bp = 'mobile', wide = false }) {
 
   return (
     <div className="anim-fadeIn" style={{
-      background: colors.green.surface, borderRadius: radius.card,
-      padding: bp === 'desktop' ? '32px 36px 36px' : '26px 28px 30px',
+      background: colors.green.surface,
+      borderRadius: radius.card,
+      padding: isDesktop ? '32px 36px 36px' : '26px 28px 30px',
       fontFamily: font.family, width: '100%', maxWidth: maxW, margin: '0 auto',
       border: `0.5px solid ${colors.border.soft}`,
       boxShadow: shadow.md,
