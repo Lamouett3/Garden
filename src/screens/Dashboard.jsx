@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { colors, radius } from '../theme/tokens'
+import { colors, radius, shadow } from '../theme/tokens'
 import { Screen, ScreenHeader, StreakBadge, Segmented, AnimatedNumber, ConfirmDialog, useToast } from '../components/ui'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
@@ -94,7 +94,8 @@ function EpisodeList({ episodes, showMoon, showPlanets, onEdit, onDelete }) {
               background: expanded ? colors.green.soft : colors.sand.bg,
               borderRadius: radius.md, padding: '10px 12px', cursor: 'pointer',
               border: expanded ? `1.5px solid ${colors.green.leafLight}` : '1.5px solid transparent',
-              transition: 'background .2s, border-color .2s',
+              transition: 'background .2s, border-color .2s, box-shadow .2s',
+              boxShadow: expanded ? shadow.sm : shadow.card,
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.muted, minWidth: 42 }}>{hour}</span>
@@ -179,7 +180,7 @@ function EpisodeList({ episodes, showMoon, showPlanets, onEdit, onDelete }) {
 
 function StatCard({ label, value, suffix }) {
   return (
-    <div className="anim-fadeInUp" style={{ flex: 1, background: colors.sand.bg, borderRadius: radius.md, padding: 12 }}>
+    <div className="anim-fadeInUp" style={{ flex: 1, background: colors.sand.bg, borderRadius: radius.md, padding: 12, boxShadow: shadow.card }}>
       <div style={{ fontSize: 11, color: colors.sand.text }}>{label}</div>
       <div style={{ fontSize: 19, fontWeight: 600, color: colors.text.body }}>
         <AnimatedNumber value={value} />{suffix && value !== '\u2014' && <span style={{ fontSize: 12, color: colors.sand.faint }}>{suffix}</span>}
@@ -242,7 +243,7 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
               border: 'none', background: colors.green.primary, color: '#fff',
               padding: '12px 24px', borderRadius: radius.lg, fontSize: 14,
               display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
-              fontFamily: 'inherit',
+              fontFamily: 'inherit', boxShadow: shadow.button,
             }}>
             <i className="ti ti-plus" aria-hidden="true" /> Noter un episode
           </button>
@@ -293,7 +294,7 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
         <StatCard label="Intensite moy." value={stats.avgIntensity} suffix="/10" />
       </div>
       {stats.topTriggers.length > 0 && (
-        <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '12px 14px', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+        <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '12px 14px', display: 'flex', gap: 9, alignItems: 'flex-start', boxShadow: shadow.card }}>
           <i className="ti ti-bulb" style={{ color: colors.green.primaryDark, fontSize: 17, marginTop: 1 }} aria-hidden="true" />
           <span style={{ fontSize: 12, color: colors.green.primaryDark, lineHeight: 1.5 }}>
             Ton declencheur le plus frequent : {stats.topTriggers[0].label} ({stats.topTriggers[0].count} fois).

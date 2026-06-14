@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { colors, font } from './theme/tokens'
+import { colors, radius, font, shadow } from './theme/tokens'
 import { StoreProvider } from './data/store'
 import { useBreakpoint } from './theme/useBreakpoint'
 import { getSession, logout, migrateIfNeeded, seedTestAccount, currentAccountName } from './data/auth'
@@ -20,16 +20,24 @@ const TABS = [
 ]
 
 function Logo({ size = 34 }) {
+  // viewBox cadre sur la masse visuelle (feuilles + fleur + tige courte)
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" role="img" aria-label="Logo Pousse">
-      <circle cx="60" cy="60" r="58" fill="#EAF1EC" />
-      <path d="M60 92 C60 78 59 66 56 56" stroke="#3F6B49" strokeWidth="6" strokeLinecap="round" fill="none" />
-      <path d="M56 60 C50 48 38 44 26 45 C28 60 40 66 54 63 C55 62 56 61 56 60 Z" fill="#7FB089" />
-      <path d="M56 60 C50 50 40 47 30 47 C34 57 43 61 53 60 Z" fill="#9FC4A4" />
-      <path d="M58 52 C60 38 72 30 86 30 C85 46 73 54 59 53 C58 53 58 52 58 52 Z" fill="#5A8262" />
-      <path d="M58 52 C61 40 71 34 82 33 C80 44 71 50 59 50 Z" fill="#7FB089" />
-      <circle cx="60" cy="40" r="11" fill="#F3C8D2" />
-      <circle cx="60" cy="40" r="4.5" fill="#E9B85E" />
+    <svg width={size} height={size} viewBox="20 26 80 72" role="img" aria-label="Logo Pousse" style={{ overflow: 'visible' }}>
+      <defs>
+        <filter id="logo-shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2.5" floodColor="#2E4034" floodOpacity="0.18" />
+        </filter>
+      </defs>
+      <g filter="url(#logo-shadow)">
+        <circle className="logo-seed" cx="60" cy="88" r="5" fill="#8B6F47" />
+        <path className="logo-stem" d="M60 92 C60 78 59 66 56 56" stroke="#3F6B49" strokeWidth="6" strokeLinecap="round" fill="none" />
+        <path className="logo-leaf-l1" d="M56 60 C50 48 38 44 26 45 C28 60 40 66 54 63 C55 62 56 61 56 60 Z" fill="#7FB089" />
+        <path className="logo-leaf-l2" d="M56 60 C50 50 40 47 30 47 C34 57 43 61 53 60 Z" fill="#9FC4A4" />
+        <path className="logo-leaf-r1" d="M58 52 C60 38 72 30 86 30 C85 46 73 54 59 53 C58 53 58 52 58 52 Z" fill="#5A8262" />
+        <path className="logo-leaf-r2" d="M58 52 C61 40 71 34 82 33 C80 44 71 50 59 50 Z" fill="#7FB089" />
+        <circle className="logo-bloom" cx="60" cy="40" r="11" fill="#F3C8D2" />
+        <circle className="logo-center" cx="60" cy="40" r="4.5" fill="#E9B85E" />
+      </g>
     </svg>
   )
 }
@@ -55,24 +63,42 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
   // ---------- DESKTOP : navigation latérale ----------
   if (isDesktop) {
     return (
-      <div style={{ minHeight: '100vh', background: '#d9e3da', fontFamily: font.family, display: 'flex' }}>
+      <div style={{ height: '100vh', background: '#d9e3da', fontFamily: font.family, display: 'flex', overflow: 'hidden' }}>
         <aside className="no-print" style={{
           width: 240, flexShrink: 0, background: colors.green.surface,
           borderRight: `0.5px solid ${colors.border.soft}`, padding: '28px 18px',
-          display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh',
+          display: 'flex', flexDirection: 'column', height: '100%',
+          boxShadow: shadow.sidebar,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 8px', marginBottom: 28 }}>
-            <Logo size={36} />
-            <span style={{ fontSize: 22, fontWeight: 700, color: colors.text.title }}>Pousse</span>
+          <div style={{ padding: '0 6px', marginBottom: 24 }}>
+            <button onClick={() => setTab('home')} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              <Logo size={34} />
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: colors.text.title, lineHeight: 1, letterSpacing: '-0.3px' }}>Pousse</div>
+                <div style={{ fontSize: 9.5, color: colors.text.faint, letterSpacing: '0.8px', textTransform: 'uppercase', marginTop: 2 }}>jour apres jour</div>
+              </div>
+            </button>
+            <div style={{ height: 1, background: `linear-gradient(90deg, ${colors.green.leafLight}, transparent)`, marginTop: 16 }} />
           </div>
           {accountName && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 16,
-              background: colors.green.soft, borderRadius: 10, fontSize: 13, color: colors.text.muted,
+            <button onClick={() => setTab('profile')} style={{
+              display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', marginBottom: 16,
+              background: colors.green.soft, borderRadius: radius.md, fontSize: 13, color: colors.text.muted,
+              boxShadow: shadow.xs, border: `0.5px solid ${colors.border.soft}`,
+              width: '100%', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
             }}>
-              <i className="ti ti-user" style={{ fontSize: 15 }} aria-hidden="true" />
-              {accountName}
-            </div>
+              <div style={{
+                width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                background: `linear-gradient(135deg, ${colors.green.leaf}, ${colors.green.primary})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <i className="ti ti-user" style={{ fontSize: 13, color: '#fff' }} aria-hidden="true" />
+              </div>
+              <span style={{ fontWeight: 500 }}>{accountName}</span>
+            </button>
           )}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {TABS.map((t) => {
@@ -98,8 +124,8 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
           </div>
         </aside>
 
-        <main style={{ flex: 1, padding: '40px 32px', overflowY: 'auto' }}>
-          <div style={{ maxWidth: 820, margin: '0 auto' }}>
+        <main style={{ flex: 1, padding: '40px 32px', overflowY: 'auto', height: '100%' }}>
+          <div style={{ maxWidth: 820, margin: '0 auto', minHeight: 0 }}>
             <Screens tab={tab} setTab={setTab} bp={bp} onLogout={handleLogout} />
           </div>
         </main>
@@ -117,29 +143,46 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
       display: 'flex', flexDirection: 'column',
     }}>
       <header style={{
+        position: 'sticky', top: 0, zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: isTablet ? '28px 24px 0' : '22px 14px 0',
-        marginBottom: isTablet ? 18 : 14,
+        padding: isTablet ? '16px 24px' : '14px 16px',
+        background: 'rgba(217,227,218,0.82)',
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: `0.5px solid rgba(214,224,216,0.6)`,
         flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <Logo size={isTablet ? 38 : 32} />
-          <span style={{ fontSize: isTablet ? 26 : 24, fontWeight: 700, color: colors.text.title }}>Pousse</span>
-        </div>
-        {accountName && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: colors.green.soft, borderRadius: 10,
-            padding: '6px 11px', fontSize: 12, color: colors.text.muted,
-          }}>
-            <i className="ti ti-user" style={{ fontSize: 14 }} aria-hidden="true" />
-            {accountName}
+        <button onClick={() => setTab('home')} style={{
+          display: 'flex', alignItems: 'center', gap: isTablet ? 11 : 9,
+          background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          <Logo size={isTablet ? 32 : 28} />
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: isTablet ? 19 : 17, fontWeight: 700, color: colors.text.title, lineHeight: 1, letterSpacing: '-0.3px' }}>Pousse</div>
+            <div style={{ fontSize: isTablet ? 9 : 8, color: colors.text.faint, letterSpacing: '0.8px', textTransform: 'uppercase', marginTop: 2 }}>jour apres jour</div>
           </div>
+        </button>
+        {accountName && (
+          <button onClick={() => setTab('profile')} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            background: colors.green.surface, borderRadius: radius.pill,
+            padding: '5px 12px 5px 5px', fontSize: 12, color: colors.text.muted,
+            boxShadow: shadow.sm, border: `0.5px solid ${colors.border.soft}`,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+              background: `linear-gradient(135deg, ${colors.green.leaf}, ${colors.green.primary})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <i className="ti ti-user" style={{ fontSize: 12, color: '#fff' }} aria-hidden="true" />
+            </div>
+            <span style={{ fontWeight: 500 }}>{accountName}</span>
+          </button>
         )}
       </header>
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
-        padding: isTablet ? '0 24px' : '0 14px',
+        padding: isTablet ? '16px 24px 0' : '14px 14px 0',
         paddingBottom: navH + 18,
         maxWidth: isTablet ? 680 : 460, width: '100%', margin: '0 auto',
       }}>
@@ -150,8 +193,11 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
 
       <nav className="no-print" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: colors.green.surface, borderTop: `0.5px solid ${colors.border.soft}`,
-        display: 'flex', justifyContent: 'center', gap: 2, padding: '8px 8px 14px',
+        background: 'rgba(251,251,246,0.88)',
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        borderTop: `0.5px solid rgba(214,224,216,0.6)`,
+        display: 'flex', justifyContent: 'center', gap: 2, padding: '6px 8px 14px',
+        boxShadow: shadow.nav,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-around', width: '100%', maxWidth: 520 }}>
           {TABS.map((t) => {
@@ -160,12 +206,19 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
               <button key={t.id} onClick={() => setTab(t.id)}
                 style={{
                   flex: 1, maxWidth: 90, border: 'none', background: 'transparent',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                   color: active ? colors.green.primary : colors.text.soft,
-                  fontWeight: active ? 600 : 400, fontSize: 11, padding: '6px 0',
-                  fontFamily: 'inherit',
+                  fontWeight: active ? 600 : 400, fontSize: 10, padding: '6px 0',
+                  fontFamily: 'inherit', position: 'relative',
                 }}>
-                <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
+                <div style={{
+                  width: 36, height: 36, borderRadius: 12,
+                  background: active ? colors.green.soft : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background .2s ease',
+                }}>
+                  <i className={`ti ${t.icon}`} style={{ fontSize: 20 }} aria-hidden="true" />
+                </div>
                 {t.label}
               </button>
             )

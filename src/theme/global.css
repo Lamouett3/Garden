@@ -71,6 +71,46 @@ input:focus-visible {
   to   { stroke-dashoffset: 0; }
 }
 
+/* --- Logo flower growth animation --- */
+@keyframes logoSeed {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+@keyframes logoStemGrow {
+  from { stroke-dashoffset: 50; opacity: 0; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes logoLeafLeft {
+  0%   { transform: scale(0) rotate(15deg); opacity: 0; }
+  70%  { transform: scale(1.05) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes logoLeafRight {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  70%  { transform: scale(1.05) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes logoBloom {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  80%  { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes logoCenter {
+  0%   { transform: scale(0); opacity: 0; }
+  70%  { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.logo-seed     { animation: logoSeed .5s ease .1s both; transform-origin: 60px 88px; }
+.logo-stem     { animation: logoStemGrow .6s ease .4s both; stroke-dasharray: 50; }
+.logo-leaf-l1  { animation: logoLeafLeft .5s cubic-bezier(.34,1.56,.64,1) .7s both; transform-origin: 56px 60px; }
+.logo-leaf-l2  { animation: logoLeafLeft .4s cubic-bezier(.34,1.56,.64,1) .85s both; transform-origin: 56px 60px; }
+.logo-leaf-r1  { animation: logoLeafRight .5s cubic-bezier(.34,1.56,.64,1) .9s both; transform-origin: 58px 52px; }
+.logo-leaf-r2  { animation: logoLeafRight .4s cubic-bezier(.34,1.56,.64,1) 1.05s both; transform-origin: 58px 52px; }
+.logo-bloom    { animation: logoBloom .6s cubic-bezier(.34,1.56,.64,1) 1.15s both; transform-origin: 60px 40px; }
+.logo-center   { animation: logoCenter .4s cubic-bezier(.34,1.56,.64,1) 1.5s both; transform-origin: 60px 40px; }
+
 .anim-fadeInUp   { animation: fadeInUp .45s ease both; }
 .anim-fadeIn     { animation: fadeIn .4s ease both; }
 .anim-scaleIn    { animation: scaleIn .4s cubic-bezier(.34,1.56,.64,1) both; }
@@ -91,10 +131,14 @@ input:focus-visible {
 
 /* Interactive element transitions */
 button {
-  transition: transform .15s ease, box-shadow .15s ease, background .2s ease, border-color .2s ease, color .2s ease;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+}
+button:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 button:active {
   transform: scale(0.97);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
 @media (prefers-reduced-motion: reduce) {

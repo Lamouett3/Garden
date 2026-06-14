@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { conditions, conditionKeys, durations, efficacyLevels, zoneLabels, genderFilteredTriggers } from '../data/conditions'
-import { colors, radius } from '../theme/tokens'
+import { colors, radius, shadow } from '../theme/tokens'
 import BodySilhouette from '../components/BodySilhouette'
 import { Screen, ScreenHeader, Chip, PrimaryButton, useToast } from '../components/ui'
 import { useStore } from '../data/store'
@@ -148,6 +148,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             background: colors.green.soft, borderRadius: radius.lg, padding: '10px 14px', marginBottom: 12,
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.06)',
           }}>
             <i className="ti ti-search" style={{ color: colors.text.faint, fontSize: 17 }} aria-hidden="true" />
             <input
@@ -175,7 +176,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
                     display: 'flex', gap: 12, alignItems: 'flex-start', textAlign: 'left',
                     background: colors.green.surface, border: `1.5px solid ${colors.border.soft}`,
                     borderRadius: radius.md, padding: '12px 14px', cursor: 'pointer', width: '100%',
-                    fontFamily: 'inherit',
+                    fontFamily: 'inherit', boxShadow: shadow.card,
                   }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10, flexShrink: 0,
@@ -272,7 +273,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
           </div>
 
           {showEfficacy && (
-            <div className="anim-fadeInUp" style={{ background: colors.sand.bg, borderRadius: radius.md, padding: '12px 14px', marginBottom: 18 }}>
+            <div className="anim-fadeInUp" style={{ background: colors.sand.bg, borderRadius: radius.md, padding: '12px 14px', marginBottom: 18, boxShadow: shadow.card }}>
               <div style={{ fontSize: 12, color: colors.sand.text, marginBottom: 9, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ti ti-bell" aria-hidden="true" /> On te le redemandera dans quelques heures
               </div>
@@ -308,7 +309,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
                   width: '100%', background: colors.sand.bg, borderRadius: radius.md, padding: '13px 14px',
                   marginBottom: showDetails ? 12 : 18, border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  fontFamily: 'inherit',
+                  fontFamily: 'inherit', boxShadow: shadow.card,
                 }}>
                 <span style={{ fontSize: 13, color: colors.sand.text, display: 'flex', alignItems: 'center', gap: 7 }}>
                   <i className={`ti ${showDetails ? 'ti-minus' : 'ti-plus'}`} aria-hidden="true" /> {cond.extra.label || 'Plus de details'}

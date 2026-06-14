@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext, useCallback, Component } from 'react'
-import { colors, radius, font } from '../theme/tokens'
+import { colors, radius, font, shadow } from '../theme/tokens'
 
 // Conteneur d'écran responsive.
 export function Screen({ children, bp = 'mobile', wide = false }) {
@@ -24,6 +24,7 @@ export function Screen({ children, bp = 'mobile', wide = false }) {
       padding: bp === 'desktop' ? '32px 36px 36px' : '26px 28px 30px',
       fontFamily: font.family, width: '100%', maxWidth: maxW, margin: '0 auto',
       border: `0.5px solid ${colors.border.soft}`,
+      boxShadow: shadow.md,
       display: 'flex', flexDirection: 'column',
     }}>
       {children}
@@ -66,6 +67,7 @@ export function StreakBadge({ children, icon = 'ti-seedling' }) {
       display: 'flex', alignItems: 'center', gap: 5,
       background: colors.green.softer, color: colors.green.primaryDark,
       fontSize: 12, fontWeight: 600, padding: '6px 11px', borderRadius: radius.pill,
+      boxShadow: shadow.xs,
     }}>
       <i className={`ti ${icon}`} aria-hidden="true" /> {children}
     </div>
@@ -80,7 +82,7 @@ export function Segmented({ options, value, onChange, variant = 'garden' }) {
   const inactiveColor = isClinical ? colors.text.muted : colors.text.soft
 
   return (
-    <div role="tablist" style={{ display: 'flex', background: trackBg, borderRadius: radius.md, padding: 4, marginBottom: 18 }}>
+    <div role="tablist" style={{ display: 'flex', background: trackBg, borderRadius: radius.md, padding: 4, marginBottom: 18, boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.06)' }}>
       {options.map((opt) => {
         const active = opt.value === value
         return (
@@ -91,7 +93,7 @@ export function Segmented({ options, value, onChange, variant = 'garden' }) {
               color: active ? activeColor : inactiveColor,
               fontWeight: active ? 600 : 400, borderRadius: radius.sm,
               transition: 'background .25s ease, color .2s ease, font-weight .15s ease',
-              boxShadow: active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+              boxShadow: active ? shadow.sm : 'none',
             }}>
             {opt.label}
           </button>
@@ -116,6 +118,7 @@ export function Chip({ children, active, variant = 'amber', onClick, style }) {
         color: active ? p.text : colors.text.muted,
         transition: 'all .2s ease',
         transform: active ? 'scale(1.03)' : 'scale(1)',
+        boxShadow: active ? shadow.sm : 'none',
         ...style,
       }}>
       {children}
@@ -132,6 +135,7 @@ export function PrimaryButton({ children, icon, onClick, dark, disabled }) {
         color: '#fff', padding: 14, borderRadius: radius.lg, fontSize: 14,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         transition: 'transform .15s ease, box-shadow .2s ease, opacity .2s ease',
+        boxShadow: disabled ? 'none' : shadow.button,
         opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer',
       }}>
       {icon && <i className={`ti ${icon}`} aria-hidden="true" />} {children}
@@ -281,7 +285,7 @@ function ToastItem({ toast, onDismiss }) {
     <div className="anim-fadeInUp" style={{
       background: s.bg, border: `1px solid ${s.border}`, borderRadius: radius.md,
       padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 9,
-      boxShadow: '0 4px 16px rgba(0,0,0,0.1)', pointerEvents: 'auto',
+      boxShadow: shadow.lg, pointerEvents: 'auto',
     }}>
       <i className={`ti ${s.icon}`} style={{ fontSize: 16, color: s.color, flexShrink: 0 }} aria-hidden="true" />
       <span style={{ fontSize: 13, color: s.color, flex: 1, lineHeight: 1.4 }}>{toast.message}</span>
@@ -312,7 +316,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmer'
     }} onClick={onCancel} role="presentation">
       <div className="anim-scaleIn" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{
         background: colors.green.surface, borderRadius: radius.lg, padding: '24px 22px',
-        maxWidth: 340, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+        maxWidth: 340, width: '100%', boxShadow: shadow.xl,
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: colors.text.title, marginBottom: 8 }}>{title}</div>
         <p style={{ fontSize: 13, color: colors.text.muted, lineHeight: 1.6, margin: '0 0 20px' }}>{message}</p>
@@ -328,6 +332,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmer'
             background: danger ? '#D06050' : colors.green.primary,
             color: '#fff', padding: 11, borderRadius: radius.md, fontSize: 13,
             fontWeight: 600, fontFamily: 'inherit',
+            boxShadow: shadow.button,
           }}>
             {confirmLabel}
           </button>

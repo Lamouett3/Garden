@@ -75,6 +75,19 @@ export const radius = {
   pill: '20px',
 }
 
+export const shadow = {
+  xs: '0 1px 2px rgba(0,0,0,0.04)',
+  sm: '0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+  md: '0 2px 8px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)',
+  lg: '0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+  xl: '0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05)',
+  button: '0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)',
+  buttonHover: '0 4px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.06)',
+  card: '0 1px 4px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.03)',
+  nav: '0 -2px 12px rgba(0,0,0,0.06)',
+  sidebar: '2px 0 12px rgba(0,0,0,0.04)',
+}
+
 export const spacing = {
   xs: '6px',
   sm: '8px',

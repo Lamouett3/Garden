@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { colors, radius } from '../theme/tokens'
+import { colors, radius, shadow } from '../theme/tokens'
 import { getPlanetPositions, getMoonPhase, getMoonPhaseName } from '../data/astro'
 
 // Couleurs des planetes — palette jardin enrichie
@@ -258,6 +258,7 @@ function MoonPhaseStrip({ moonPhase, moonInfo }) {
       background: colors.sand.bg, borderRadius: radius.md,
       padding: '14px 16px 12px', marginTop: 10,
       border: `1px solid ${colors.border.soft}`,
+      boxShadow: shadow.card,
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { colors, radius } from '../theme/tokens'
+import { colors, radius, shadow } from '../theme/tokens'
 import { Screen, StreakBadge, PrimaryButton, AnimatedNumber, ConfirmDialog, useToast } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
 import PlanetaryWidget from '../components/PlanetaryWidget'
@@ -70,6 +70,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
     <div className="anim-fadeInUp anim-d2" style={{
       background: CYCLE_COLORS[cyclePhase.color].bg, borderRadius: radius.md,
       padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 10,
+      boxShadow: shadow.card,
     }}>
       <div style={{
         width: 32, height: 32, borderRadius: 8, flexShrink: 0,
@@ -93,7 +94,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   )
 
   const todayCard = loggedToday && (
-    <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', display: 'flex', gap: 9, alignItems: 'center' }}>
+    <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', display: 'flex', gap: 9, alignItems: 'center', boxShadow: shadow.card }}>
       <i className="ti ti-check" style={{ color: colors.green.primaryDark, fontSize: 18 }} aria-hidden="true" />
       <span style={{ fontSize: 13, color: colors.green.primaryDark }}>Tu as deja pris soin de toi aujourd'hui.</span>
     </div>
@@ -109,7 +110,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
   const efficacyCard = pendingEfficacy.length > 0 && (
     <div className="anim-fadeInUp anim-d4" style={{
       background: colors.amber.bg, borderRadius: radius.md, padding: '12px 14px',
-      border: `1px solid ${colors.amber.border}`,
+      border: `1px solid ${colors.amber.border}`, boxShadow: shadow.card,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <i className="ti ti-bell" style={{ color: colors.amber.text, fontSize: 16 }} aria-hidden="true" />
@@ -163,7 +164,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
             flex: 1, border: `1.5px solid ${colors.green.leafLight}`,
             background: colors.green.soft, color: colors.green.primaryDark, padding: 13, borderRadius: radius.lg,
             fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            cursor: 'pointer', fontFamily: 'inherit',
+            cursor: 'pointer', fontFamily: 'inherit', boxShadow: shadow.xs,
           }}>
           <i className="ti ti-sun" aria-hidden="true" /> Tout va bien aujourd'hui
         </button>
@@ -173,7 +174,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           flex: 1, border: `1.5px solid ${colors.border.soft}`,
           background: 'transparent', color: colors.text.muted, padding: 13, borderRadius: radius.lg,
           fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: 'pointer',
-          fontFamily: 'inherit',
+          fontFamily: 'inherit', boxShadow: shadow.xs,
         }}>
         <i className="ti ti-chart-bar" aria-hidden="true" /> Voir mon historique
       </button>
@@ -199,7 +200,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         <div className="anim-scaleIn" style={{
           background: colors.amber.bg, borderRadius: radius.lg,
           padding: '18px 16px', marginBottom: 14, textAlign: 'center',
-          border: `1.5px solid ${colors.amber.border}`,
+          border: `1.5px solid ${colors.amber.border}`, boxShadow: shadow.sm,
         }}>
           <div style={{ fontSize: 20, marginBottom: 6 }}>
             <i className="ti ti-confetti" style={{ color: colors.amber.text, fontSize: 24 }} aria-hidden="true" />
@@ -216,6 +217,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
               padding: '10px 22px', borderRadius: radius.md, fontSize: 14,
               fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
               display: 'inline-flex', alignItems: 'center', gap: 7,
+              boxShadow: shadow.button,
             }}>
             <i className="ti ti-plant" aria-hidden="true" /> Recolter et replanter
           </button>
@@ -235,7 +237,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 24, alignItems: 'start', marginBottom: 20 }}>
             <div>
-              <div style={{ background: colors.green.bg, borderRadius: radius.lg, padding: '24px 20px 12px' }}>
+              <div style={{ background: colors.green.bg, borderRadius: radius.lg, padding: '24px 20px 12px', boxShadow: shadow.card }}>
                 <GrowingGarden days={gardenDayCount} />
               </div>
               <div style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 8 }}>
@@ -256,6 +258,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           <div style={{
             background: colors.green.bg, borderRadius: radius.lg,
             padding: '16px 8px 6px', marginBottom: 8,
+            boxShadow: shadow.card,
           }}>
             <GrowingGarden days={gardenDayCount} />
           </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { colors, radius, font } from '../theme/tokens'
+import { colors, radius, font, shadow } from '../theme/tokens'
 import { login, register, loadAccounts } from '../data/auth'
 
 export default function Auth({ bp = 'mobile', onAuthenticated }) {
@@ -37,30 +37,40 @@ export default function Auth({ bp = 'mobile', onAuthenticated }) {
         background: colors.green.surface, borderRadius: radius.card,
         padding: isDesktop ? '40px 36px' : '32px 24px',
         border: `0.5px solid ${colors.border.soft}`,
+        boxShadow: shadow.lg,
       }}>
-        {/* Logo */}
+        {/* Logo anime — graine → bourgeon → fleur */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <svg width="48" height="48" viewBox="0 0 100 100" role="img" aria-label="Logo Pousse" style={{ marginBottom: 10 }}>
-            <circle cx="50" cy="50" r="50" fill="#E7EFE8" />
-            <path d="M50 80 C50 64 50 52 50 40" stroke="#5A8262" strokeWidth="5" strokeLinecap="round" fill="none" />
-            <path d="M50 54 C50 41 42 31 27 29 C29 43 37 52 50 54 Z" fill="#7FB089" />
-            <path d="M50 47 C50 34 58 23 73 21 C71 36 63 45 50 47 Z" fill="#9FC4A4" />
-            <path d="M50 40 C50 30 50 24 50 19" stroke="#5A8262" strokeWidth="5" strokeLinecap="round" fill="none" />
-            <circle cx="50" cy="15" r="9" fill="#F3C8D2" />
-            <circle cx="50" cy="15" r="3.5" fill="#E9B85E" />
+          <svg width="64" height="64" viewBox="10 20 100 80" role="img" aria-label="Logo Pousse" style={{ marginBottom: 10, overflow: 'visible' }}>
+            <defs>
+              <filter id="auth-logo-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="1.5" stdDeviation="3" floodColor="#2E4034" floodOpacity="0.2" />
+              </filter>
+            </defs>
+            <g filter="url(#auth-logo-shadow)">
+              <circle className="logo-seed" cx="60" cy="88" r="5" fill="#8B6F47" />
+              <path className="logo-stem" d="M60 92 C60 78 59 66 56 56" stroke="#3F6B49" strokeWidth="6" strokeLinecap="round" fill="none" />
+              <path className="logo-leaf-l1" d="M56 60 C50 48 38 44 26 45 C28 60 40 66 54 63 C55 62 56 61 56 60 Z" fill="#7FB089" />
+              <path className="logo-leaf-l2" d="M56 60 C50 50 40 47 30 47 C34 57 43 61 53 60 Z" fill="#9FC4A4" />
+              <path className="logo-leaf-r1" d="M58 52 C60 38 72 30 86 30 C85 46 73 54 59 53 C58 53 58 52 58 52 Z" fill="#5A8262" />
+              <path className="logo-leaf-r2" d="M58 52 C61 40 71 34 82 33 C80 44 71 50 59 50 Z" fill="#7FB089" />
+              <circle className="logo-bloom" cx="60" cy="40" r="11" fill="#F3C8D2" />
+              <circle className="logo-center" cx="60" cy="40" r="4.5" fill="#E9B85E" />
+            </g>
           </svg>
           <div style={{ fontSize: 24, fontWeight: 700, color: colors.text.title }}>Pousse</div>
           <div style={{ fontSize: 13, color: colors.text.soft, marginTop: 4 }}>jour apres jour</div>
         </div>
 
         {/* Toggle mode */}
-        <div style={{ display: 'flex', background: colors.green.soft, borderRadius: radius.md, padding: 4, marginBottom: 20 }}>
+        <div style={{ display: 'flex', background: colors.green.soft, borderRadius: radius.md, padding: 4, marginBottom: 20, boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.06)' }}>
           <button onClick={() => { setMode('login'); setError('') }}
             style={{
               flex: 1, fontSize: 13, padding: '9px 0', border: 'none', borderRadius: radius.sm,
               background: mode === 'login' ? colors.green.surface : 'transparent',
               color: mode === 'login' ? colors.text.title : colors.text.soft,
               fontWeight: mode === 'login' ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: mode === 'login' ? shadow.sm : 'none',
             }}>
             Se connecter
           </button>
@@ -70,6 +80,7 @@ export default function Auth({ bp = 'mobile', onAuthenticated }) {
               background: mode === 'register' ? colors.green.surface : 'transparent',
               color: mode === 'register' ? colors.text.title : colors.text.soft,
               fontWeight: mode === 'register' ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: mode === 'register' ? shadow.sm : 'none',
             }}>
             Creer un compte
           </button>
@@ -115,6 +126,7 @@ export default function Auth({ bp = 'mobile', onAuthenticated }) {
               color: '#fff', padding: 14, borderRadius: radius.lg, fontSize: 14,
               fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              boxShadow: shadow.button,
             }}>
             <i className={`ti ${mode === 'login' ? 'ti-login' : 'ti-user-plus'}`} aria-hidden="true" />
             {mode === 'login' ? 'Se connecter' : 'Creer mon compte'}

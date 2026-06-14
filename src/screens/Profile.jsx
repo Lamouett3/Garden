@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { colors, radius } from '../theme/tokens'
+import { colors, radius, shadow } from '../theme/tokens'
 import { Screen, ScreenHeader, Toggle, Segmented, useToast, ConfirmDialog } from '../components/ui'
 import { useStore } from '../data/store'
 import { replaceAllEpisodes, saveProfile as persistProfile } from '../data/storage'
@@ -37,6 +37,7 @@ export default function Profile({ bp = 'mobile', onLogout }) {
                 border: `1.5px solid ${active ? colors.green.primary : colors.border.soft}`,
                 background: active ? colors.green.primary : 'transparent',
                 color: active ? '#fff' : colors.text.muted,
+                boxShadow: active ? shadow.button : shadow.xs,
               }}>
               {g.label}
             </button>
@@ -45,7 +46,7 @@ export default function Profile({ bp = 'mobile', onLogout }) {
       </div>
 
       {(profile.gender === 'f' || profile.gender === 'n') && (
-        <div style={{ background: colors.green.soft, borderRadius: radius.lg, padding: '15px 15px 16px', marginBottom: 14 }}>
+        <div style={{ background: colors.green.soft, borderRadius: radius.lg, padding: '15px 15px 16px', marginBottom: 14, boxShadow: shadow.card }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: colors.text.title, display: 'flex', alignItems: 'center', gap: 7 }}>
               <i className="ti ti-droplet" aria-hidden="true" /> Mon cycle
@@ -117,7 +118,7 @@ export default function Profile({ bp = 'mobile', onLogout }) {
 
       <Label style={{ marginTop: 18 }}>Reperes personnels</Label>
 
-      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 10 }}>
+      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 10, boxShadow: shadow.card }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: colors.text.body, display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -135,7 +136,7 @@ export default function Profile({ bp = 'mobile', onLogout }) {
         </div>
       </div>
 
-      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 10 }}>
+      <div style={{ background: colors.sand.bg, borderRadius: radius.lg, padding: 15, marginBottom: 10, boxShadow: shadow.card }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: colors.text.body, display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -273,7 +274,7 @@ function Label({ children, style }) {
 
 function MiniField({ label, children }) {
   return (
-    <div style={{ flex: 1, background: colors.green.surface, borderRadius: radius.sm, padding: '9px 11px' }}>
+    <div style={{ flex: 1, background: colors.green.surface, borderRadius: radius.sm, padding: '9px 11px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}>
       <div style={{ fontSize: 11, color: '#8A9B8E', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 15, fontWeight: 600, color: colors.text.body, display: 'flex', alignItems: 'center', gap: 4 }}>{children}</div>
     </div>

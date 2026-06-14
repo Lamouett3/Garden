@@ -3,9 +3,15 @@ import { colors, radius, font } from '../theme/tokens'
 import { PrimaryButton, Segmented, AnimatedNumber } from '../components/ui'
 
 import { useStore } from '../data/store'
-import { computeStats, withoutBienetre, filterByPeriod, periodLabel, getRefDate, buildCalendarGrid, formatHour } from '../data/stats'
+import { computeStats, withoutBienetre, filterByPeriod, periodLabel, getRefDate, formatHour } from '../data/stats'
 import { conditions, zoneLabels } from '../data/conditions'
+import { getCyclePhase } from '../data/storage'
 import { getMoonPhase, getMoonPhaseName, getPlanetPositions } from '../data/astro'
+
+// =====================================================================
+// Rapport médical structuré — conçu pour être imprimé et remis à un
+// professionnel de santé. Registre clinique sobre (cf. CLAUDE.md §3).
+// =====================================================================
 
 export default function MedicalReport({ bp = 'mobile' }) {
   const { episodes: allEpisodes, profile } = useStore()
@@ -17,16 +23,10 @@ export default function MedicalReport({ bp = 'mobile' }) {
 
   const filtered = filterByPeriod(allReal, period, offset)
   const stats = computeStats(filtered)
-
-  const cardW = bp === 'desktop' ? 620 : bp === 'tablet' ? 520 : 380
-  const maxTrig = Math.max(1, ...stats.topTriggers.map((t) => t.count))
+  const cardW = bp === 'desktop' ? 680 : bp === 'tablet' ? 560 : 420
   const pLabel = periodLabel(period, offset)
 
-  function handlePeriodChange(p) {
-    setPeriod(p)
-    setOffset(0)
-  }
-
+  function handlePeriodChange(p) { setPeriod(p); setOffset(0) }
   const handleExport = () => window.print()
 
   if (allReal.length === 0) {
@@ -43,47 +43,32 @@ export default function MedicalReport({ bp = 'mobile' }) {
   }
 
   const now = new Date()
-  const ref = getRefDate(period, offset)
-  const intensityDist = computeIntensityDistribution(filtered)
-  const conditionBreakdown = computeConditionBreakdown(filtered)
-  const zoneBreakdown = computeZoneBreakdown(filtered)
-  const timeBreakdown = computeTimeBreakdown(filtered)
-  const avgPerDay = computeAvgPerDay(filtered, period)
-  const maxIntDay = computeMaxIntensityDay(filtered)
+  const sorted = [...filtered].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+
+  // --- Données structurées ---
+  const byDate = groupByDate(sorted)
+  const byCondition = groupByCondition(sorted)
+  const intensityDist = computeIntensityDistribution(sorted)
+  const zoneBreakdown = computeZoneBreakdown(sorted)
+  const timeBreakdown = computeTimeBreakdown(sorted)
+  const conditionBreakdown = computeConditionBreakdown(sorted)
+  const avgPerDay = computeAvgPerDay(sorted)
+  const maxIntDay = computeMaxIntensityDay(sorted)
+  const evolution = computeEvolution(sorted)
 
   return (
-    <div style={{ background: colors.clinical.bg, borderRadius: radius.lg, padding: 24, display: 'flex', justifyContent: 'center' }} className="report-wrap">
+    <div style={{ background: colors.clinical.bg, borderRadius: radius.lg, padding: bp === 'mobile' ? 12 : 24, display: 'flex', justifyContent: 'center' }} className="report-wrap">
       <div className="report-card" style={{
         width: '100%', maxWidth: cardW, background: colors.clinical.surface, borderRadius: radius.md,
-        padding: '28px 24px', fontFamily: font.family, border: `0.5px solid ${colors.clinical.border}`,
+        padding: bp === 'mobile' ? '22px 16px' : '32px 28px', fontFamily: font.family, border: `0.5px solid ${colors.clinical.border}`,
       }}>
-        {/* En-tete */}
-        <div style={{ borderBottom: `1.5px solid ${colors.clinical.bg}`, paddingBottom: 16, marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: colors.clinical.ink }}>Rapport de suivi</div>
-              <div style={{ fontSize: 12, color: colors.text.soft, marginTop: 3 }}>{pLabel}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: colors.text.soft }}>Genere le {formatDate(now)}</div>
-              <div style={{ fontSize: 11, color: colors.sand.faint, marginTop: 2 }}>
-                {filtered.length} episode{filtered.length > 1 ? 's' : ''} · {distinctConditions(filtered)} pathologie{distinctConditions(filtered) > 1 ? 's' : ''}
-              </div>
-            </div>
-          </div>
-          {profile.gender && (
-            <div style={{ fontSize: 11, color: colors.text.muted, marginTop: 8 }}>
-              Profil : {profile.gender === 'f' ? 'Femme' : profile.gender === 'h' ? 'Homme' : 'Non precise'}
-              {profile.cycleOn && profile.gender !== 'h' && ' · Suivi du cycle actif'}
-            </div>
-          )}
-        </div>
 
-        <div className="no-print">
+        {/* ============ CONTROLES (ne s'impriment pas) ============ */}
+        <div className="no-print" style={{ marginBottom: 20 }}>
           <Segmented variant="clinical"
-            options={[{ value: 'j', label: 'Jour' }, { value: 's', label: 'Semaine' }, { value: 'm', label: 'Mois' }, { value: 'a', label: 'Annee' }]}
+            options={[{ value: 's', label: 'Semaine' }, { value: 'm', label: 'Mois' }, { value: 'a', label: 'Annee' }]}
             value={period} onChange={handlePeriodChange} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <NavBtn icon="ti-chevron-left" onClick={() => setOffset((o) => o - 1)} label="Periode precedente" />
             <button onClick={() => setOffset(0)}
               style={{
@@ -92,7 +77,7 @@ export default function MedicalReport({ bp = 'mobile' }) {
                 color: colors.clinical.ink, cursor: 'pointer', fontFamily: 'inherit',
                 minWidth: 140, textAlign: 'center',
               }}>
-              {offset === 0 ? pLabel : pLabel}
+              {pLabel}
             </button>
             <NavBtn icon="ti-chevron-right" onClick={() => setOffset((o) => Math.min(o + 1, 0))} label="Periode suivante" disabled={offset >= 0} />
           </div>
@@ -105,172 +90,324 @@ export default function MedicalReport({ bp = 'mobile' }) {
           </div>
         ) : (
           <>
-            {/* --- Synthese --- */}
-            <SectionTitle icon="ti-report-medical">Synthese</SectionTitle>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-              <KeyStat value={String(stats.count)} label="episodes" />
-              <KeyStat value={stats.avgIntensity} suffix="/10" label="intensite moy." />
-              <KeyStat value={avgPerDay} label="ep./jour moy." />
-              <KeyStat value={maxIntDay.value} suffix="/10" label={`pic le ${maxIntDay.date}`} />
+            {/* ============ 1. EN-TÊTE DU RAPPORT ============ */}
+            <div style={{ borderBottom: `2px solid ${colors.clinical.ink}`, paddingBottom: 14, marginBottom: 20 }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: colors.clinical.ink, letterSpacing: '-0.3px' }}>
+                Rapport de suivi symptomatologique
+              </div>
+              <div style={{ fontSize: 12, color: colors.text.muted, marginTop: 4 }}>
+                Periode : {pLabel}
+              </div>
+              <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap', fontSize: 11, color: colors.text.muted }}>
+                <span><b style={{ color: colors.clinical.ink }}>Profil :</b> {profile.gender === 'f' ? 'Femme' : profile.gender === 'h' ? 'Homme' : 'Non precise'}</span>
+                {profile.cycleOn && profile.gender !== 'h' && (
+                  <span><b style={{ color: colors.clinical.ink }}>Cycle :</b> {profile.cycleMode === 'pill' ? `Pilule (${profile.pillActiveDays || 21}+${profile.pillBreakDays || 7}j)` : `Naturel (${profile.cycleLength || 28}j)`}</span>
+                )}
+                <span><b style={{ color: colors.clinical.ink }}>Pathologies suivies :</b> {conditionBreakdown.map((c) => c.label).join(', ')}</span>
+              </div>
+              <div style={{ fontSize: 10, color: colors.sand.faint, marginTop: 6 }}>
+                Genere le {fmtDate(now)} a {fmtTime(now)} — Application Pousse
+              </div>
             </div>
 
-            {/* --- Repartition par pathologie --- */}
-            {conditionBreakdown.length > 1 && (
-              <>
-                <SectionTitle icon="ti-stethoscope">Repartition par pathologie</SectionTitle>
-                <div style={{ marginBottom: 18 }}>
-                  {conditionBreakdown.map((c, i) => (
-                    <div key={c.key} className={`anim-fadeInUp anim-d${Math.min(i + 1, 8)}`} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i === conditionBreakdown.length - 1 ? 0 : 6 }}>
-                      <span style={{ fontSize: 12, color: colors.text.muted, width: 90, flexShrink: 0 }}>{c.label}</span>
-                      <span style={{ flex: 1, height: 8, background: colors.clinical.bg, borderRadius: 5, overflow: 'hidden' }}>
-                        <span className="anim-barFillX" style={{ display: 'block', width: `${c.pct}%`, height: '100%', background: colors.green.primary, borderRadius: 5 }} />
-                      </span>
-                      <span style={{ fontSize: 11, color: colors.text.soft, width: 50, textAlign: 'right' }}>{c.count} ({c.pct}%)</span>
+            {/* ============ 2. SYNTHÈSE CLINIQUE ============ */}
+            <Section title="1. Synthese clinique" icon="ti-report-medical">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8, marginBottom: 14 }}>
+                <KeyStat value={String(stats.count)} label="episodes totaux" />
+                <KeyStat value={stats.avgIntensity} suffix="/10" label="intensite moyenne" />
+                <KeyStat value={avgPerDay} label="episodes/jour" />
+                <KeyStat value={String(conditionBreakdown.length)} label={conditionBreakdown.length > 1 ? 'pathologies' : 'pathologie'} />
+              </div>
+
+              {evolution && (
+                <div style={{
+                  background: evolution.trend === 'down' ? '#E7EFE8' : evolution.trend === 'up' ? '#FDF5F3' : colors.clinical.surfaceSoft,
+                  borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 12,
+                  border: `1px solid ${evolution.trend === 'down' ? colors.green.leafLight : evolution.trend === 'up' ? '#E8C0B8' : colors.clinical.bg}`,
+                  color: evolution.trend === 'down' ? colors.green.primaryDark : evolution.trend === 'up' ? '#8B4030' : colors.text.muted,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <i className={`ti ${evolution.trend === 'down' ? 'ti-trending-down' : evolution.trend === 'up' ? 'ti-trending-up' : 'ti-minus'}`} style={{ fontSize: 16 }} aria-hidden="true" />
+                  {evolution.text}
+                </div>
+              )}
+
+              {maxIntDay.value !== '—' && (
+                <div style={{ fontSize: 12, color: colors.text.muted, marginBottom: 14 }}>
+                  Pic d'intensite : <b style={{ color: colors.clinical.ink }}>{maxIntDay.value}/10</b> le {maxIntDay.date}
+                  {maxIntDay.condition && <> ({maxIntDay.condition})</>}
+                </div>
+              )}
+
+              {/* Distribution d'intensité */}
+              <SubTitle>Repartition des intensites</SubTitle>
+              <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 44, marginBottom: 4 }}>
+                {intensityDist.map((d, i) => (
+                  <div key={d.level} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div className="anim-barGrow" style={{
+                      width: '100%', maxWidth: 28, borderRadius: 3,
+                      height: d.count > 0 ? Math.max(4, d.pct * 0.4) : 0,
+                      background: d.level <= 3 ? colors.green.leaf : d.level <= 6 ? colors.amber.bar : d.level <= 8 ? colors.coral.barStrong : '#C45050',
+                      animationDelay: `${i * 0.04}s`,
+                    }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 2, marginBottom: 14 }}>
+                {intensityDist.map((d) => (
+                  <div key={d.level} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: colors.text.faint }}>
+                    {d.level}
+                  </div>
+                ))}
+              </div>
+
+              {/* Repartition horaire */}
+              <SubTitle>Repartition horaire</SubTitle>
+              <div style={{ display: 'flex', gap: 1, alignItems: 'flex-end', height: 30, marginBottom: 4 }}>
+                {timeBreakdown.map((t, i) => {
+                  const maxC = Math.max(1, ...timeBreakdown.map((s) => s.count))
+                  return (
+                    <div key={t.slot} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{
+                        width: '100%', maxWidth: 16, borderRadius: 2,
+                        height: t.count > 0 ? Math.max(3, (t.count / maxC) * 26) : 0,
+                        background: colors.green.primary, opacity: 0.65,
+                      }} />
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 1, marginBottom: 6 }}>
+                {timeBreakdown.map((t, i) => (
+                  <div key={t.slot} style={{ flex: 1, textAlign: 'center', fontSize: 7, color: colors.text.faint }}>
+                    {i % 4 === 0 ? t.slot : ''}
+                  </div>
+                ))}
+              </div>
+            </Section>
 
-            {/* --- Distribution d'intensite --- */}
-            <SectionTitle icon="ti-chart-bar">Distribution d'intensite</SectionTitle>
-            <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 50, marginBottom: 6 }}>
-              {intensityDist.map((d, i) => (
-                <div key={d.level} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div className="anim-barGrow" style={{
-                    width: '100%', maxWidth: 28, borderRadius: 3,
-                    height: d.pct > 0 ? Math.max(4, d.pct * 0.45) : 0,
-                    background: d.level <= 3 ? colors.green.leaf : d.level <= 6 ? colors.amber.bar : d.level <= 8 ? colors.coral.barStrong : '#C45050',
-                    animationDelay: `${i * 0.04}s`,
-                  }} />
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 3, marginBottom: 18 }}>
-              {intensityDist.map((d) => (
-                <div key={d.level} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: colors.text.faint }}>{d.level}</div>
-              ))}
-            </div>
-
-            {/* --- Zones corporelles --- */}
-            {zoneBreakdown.length > 0 && (
-              <>
-                <SectionTitle icon="ti-man">Zones corporelles touchees</SectionTitle>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-                  {zoneBreakdown.map((z, i) => (
-                    <span key={z.zone} className={`anim-popIn anim-d${Math.min(i + 1, 8)}`} style={{
-                      fontSize: 11, padding: '5px 10px', borderRadius: 8,
-                      background: colors.clinical.surfaceSoft, color: colors.text.body,
-                      border: `1px solid ${colors.clinical.bg}`,
-                    }}>
-                      {z.label} <strong style={{ color: colors.clinical.ink }}>{z.count}</strong>
+            {/* ============ 3. JOURNAL CHRONOLOGIQUE ============ */}
+            <Section title="2. Journal chronologique" icon="ti-calendar">
+              {byDate.map(({ dateStr, fullDate, episodes: dayEps }) => (
+                <div key={dateStr} style={{ marginBottom: 14 }}>
+                  <div style={{
+                    fontSize: 12, fontWeight: 700, color: colors.clinical.ink,
+                    background: colors.clinical.surfaceSoft, padding: '6px 10px',
+                    borderRadius: 6, marginBottom: 6,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span>{fullDate}</span>
+                    <span style={{ fontSize: 10, fontWeight: 400, color: colors.text.soft }}>
+                      {dayEps.length} episode{dayEps.length > 1 ? 's' : ''}
                     </span>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* --- Calendrier + legende --- */}
-            <CalendarGrid episodes={allReal} year={ref.getFullYear()} month={ref.getMonth()} showMoon={profile.moonOn} />
-            <CalendarLegend />
-
-            {/* --- Repartition horaire --- */}
-            <SectionTitle icon="ti-clock">Repartition horaire</SectionTitle>
-            <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 36, marginBottom: 4 }}>
-              {timeBreakdown.map((t, i) => (
-                <div key={t.slot} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div className="anim-barGrow" style={{
-                    width: '100%', maxWidth: 20, borderRadius: 2,
-                    height: t.count > 0 ? Math.max(3, (t.count / Math.max(1, ...timeBreakdown.map(s => s.count))) * 32) : 0,
-                    background: colors.green.primary, opacity: 0.7,
-                    animationDelay: `${i * 0.02}s`,
-                  }} />
+                  </div>
+                  <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {dayEps.map((ep) => {
+                        const condLabel = conditions[ep.condition]?.label || ep.customLabel || ep.condition
+                        const zonesStr = (ep.zones || []).map((z) => zoneLabels[z] || z).join(', ')
+                        const triggersStr = (ep.triggers || []).join(', ')
+                        return (
+                          <tr key={ep.id} style={{ borderBottom: `1px solid ${colors.clinical.bg}` }}>
+                            <td style={{ padding: '7px 0', width: 50, verticalAlign: 'top', color: colors.text.muted, fontWeight: 600 }}>
+                              {formatHour(ep.createdAt)}
+                            </td>
+                            <td style={{ padding: '7px 6px', verticalAlign: 'top' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                                <span style={{ fontWeight: 600, color: colors.clinical.ink }}>{condLabel}</span>
+                                <IntensityBadge value={ep.intensity || 0} />
+                                {ep.duration && <span style={{ fontSize: 10, color: colors.text.soft }}>{ep.duration}</span>}
+                              </div>
+                              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: colors.text.muted, lineHeight: 1.6 }}>
+                                {zonesStr && <span><b>Zones :</b> {zonesStr}</span>}
+                                {triggersStr && <span><b>Declencheurs :</b> {triggersStr}</span>}
+                                {ep.treatment && ep.treatment !== 'Aucun' && (
+                                  <span>
+                                    <b>Traitement :</b> {ep.treatment}
+                                    {ep.efficacy && <> — efficacite : <b>{ep.efficacy}</b></>}
+                                    {!ep.efficacy && <> — <i>efficacite non renseignee</i></>}
+                                  </span>
+                                )}
+                                {ep.extra?.length > 0 && <span><b>Details :</b> {ep.extra.join(', ')}</span>}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               ))}
-            </div>
-            <div style={{ display: 'flex', gap: 2, marginBottom: 18 }}>
-              {timeBreakdown.map((t, i) => (
-                <div key={t.slot} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: colors.text.faint }}>
-                  {i % 3 === 0 ? t.slot : ''}
-                </div>
-              ))}
-            </div>
+            </Section>
 
-            {/* --- Detail des episodes --- */}
-            <EpisodeDetailList episodes={filtered} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
+            {/* ============ 4. ANALYSE PAR PATHOLOGIE ============ */}
+            {conditionBreakdown.length > 0 && (
+              <Section title="3. Analyse par pathologie" icon="ti-stethoscope">
+                {byCondition.map(({ key, label, episodes: condEps }) => {
+                  const condStats = computeStats(condEps)
+                  const condZones = computeZoneBreakdown(condEps)
+                  const intensities = condEps.map((e) => e.intensity || 0)
+                  const minI = Math.min(...intensities)
+                  const maxI = Math.max(...intensities)
 
-            {/* --- Declencheurs --- */}
-            {stats.topTriggers.length > 0 && (
-              <>
-                <SectionTitle icon="ti-bolt">Declencheurs les plus frequents</SectionTitle>
-                <div style={{ marginBottom: 18 }}>
-                  {stats.topTriggers.map((t, i) => (
-                    <TriggerBar key={t.label} label={t.label} pct={Math.round((t.count / maxTrig) * 100)} count={t.count} total={filtered.length} last={i === stats.topTriggers.length - 1} />
-                  ))}
-                </div>
-              </>
+                  return (
+                    <div key={key} style={{
+                      border: `1px solid ${colors.clinical.bg}`, borderRadius: 8,
+                      padding: '14px 14px 10px', marginBottom: 12,
+                    }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: colors.clinical.ink, marginBottom: 8 }}>
+                        {label}
+                        <span style={{ fontSize: 11, fontWeight: 400, color: colors.text.soft, marginLeft: 8 }}>
+                          {condEps.length} episode{condEps.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 6, marginBottom: 10 }}>
+                        <MiniStat label="Intensite moy." value={condStats.avgIntensity} suffix="/10" />
+                        <MiniStat label="Plage" value={`${minI}–${maxI}`} suffix="/10" />
+                        {condZones.length > 0 && <MiniStat label="Zone principale" value={condZones[0].label} />}
+                      </div>
+
+                      {/* Declencheurs pour cette pathologie */}
+                      {condStats.topTriggers.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: colors.text.soft, marginBottom: 4 }}>Declencheurs identifies</div>
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                            {condStats.topTriggers.map((t) => (
+                              <span key={t.label} style={{
+                                fontSize: 10, padding: '3px 8px', borderRadius: 6,
+                                background: colors.clinical.surfaceSoft, color: colors.text.body,
+                                border: `1px solid ${colors.clinical.bg}`,
+                              }}>
+                                {t.label} <b>({t.count})</b>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Traitements pour cette pathologie */}
+                      {condStats.treatments.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: colors.text.soft, marginBottom: 4 }}>Traitements</div>
+                          {condStats.treatments.map((t) => {
+                            const rate = t.taken > 0 ? Math.round((t.relieved / t.taken) * 100) : 0
+                            return (
+                              <div key={t.name} style={{ fontSize: 11, color: colors.text.body, marginBottom: 2 }}>
+                                {t.name} — {t.taken} prise{t.taken > 1 ? 's' : ''}, soulagement {t.relieved}/{t.taken}
+                                {' '}
+                                <EfficacyTag rate={rate} />
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </Section>
             )}
 
-            {/* --- Traitements --- */}
+            {/* ============ 5. CORRELATIONS ============ */}
+            <Section title="4. Correlations et facteurs" icon="ti-chart-dots-3">
+              {/* Zones corporelles */}
+              {zoneBreakdown.length > 0 && (
+                <>
+                  <SubTitle>Zones corporelles touchees</SubTitle>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 14 }}>
+                    {zoneBreakdown.map((z) => {
+                      const pct = Math.round((z.count / filtered.length) * 100)
+                      return (
+                        <span key={z.zone} style={{
+                          fontSize: 11, padding: '4px 10px', borderRadius: 6,
+                          background: colors.clinical.surfaceSoft, color: colors.text.body,
+                          border: `1px solid ${colors.clinical.bg}`,
+                        }}>
+                          {z.label} — <b>{z.count}</b> ({pct}%)
+                        </span>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Declencheurs globaux */}
+              {stats.topTriggers.length > 0 && (
+                <>
+                  <SubTitle>Declencheurs les plus frequents</SubTitle>
+                  <div style={{ marginBottom: 14 }}>
+                    {stats.topTriggers.map((t, i) => {
+                      const pct = Math.round((t.count / filtered.length) * 100)
+                      const maxTrig = Math.max(1, ...stats.topTriggers.map((x) => x.count))
+                      return (
+                        <div key={t.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <span style={{ fontSize: 11, color: colors.text.muted, width: 100, flexShrink: 0 }}>{t.label}</span>
+                          <span style={{ flex: 1, height: 7, background: colors.clinical.bg, borderRadius: 4, overflow: 'hidden' }}>
+                            <span className="anim-barFillX" style={{ display: 'block', width: `${Math.round((t.count / maxTrig) * 100)}%`, height: '100%', background: colors.green.primary, borderRadius: 4 }} />
+                          </span>
+                          <span style={{ fontSize: 10, color: colors.text.soft, width: 55, textAlign: 'right' }}>{t.count}x ({pct}%)</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Cycle menstruel */}
+              {profile.cycleOn && profile.gender !== 'h' && sorted.length > 0 && (
+                <>
+                  <SubTitle>Correlation avec le cycle</SubTitle>
+                  <CycleCorrelation episodes={sorted} profile={profile} />
+                </>
+              )}
+            </Section>
+
+            {/* ============ 6. TRAITEMENTS ============ */}
             {stats.treatments.length > 0 && (
-              <>
-                <SectionTitle icon="ti-pill">Traitements &amp; efficacite</SectionTitle>
-                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 20 }}>
+              <Section title="5. Bilan therapeutique" icon="ti-pill">
+                <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse', marginBottom: 6 }}>
                   <thead>
-                    <tr style={{ color: colors.sand.faint, fontSize: 10 }}>
-                      <th style={{ textAlign: 'left', paddingBottom: 6, fontWeight: 600 }}>Traitement</th>
-                      <th style={{ textAlign: 'center', paddingBottom: 6, fontWeight: 600 }}>Prises</th>
-                      <th style={{ textAlign: 'center', paddingBottom: 6, fontWeight: 600 }}>A soulage</th>
-                      <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Taux</th>
+                    <tr style={{ borderBottom: `2px solid ${colors.clinical.bg}` }}>
+                      <th style={{ textAlign: 'left', padding: '6px 0', fontWeight: 700, color: colors.clinical.ink, fontSize: 10 }}>Traitement</th>
+                      <th style={{ textAlign: 'center', padding: '6px 0', fontWeight: 700, color: colors.clinical.ink, fontSize: 10 }}>Prises</th>
+                      <th style={{ textAlign: 'center', padding: '6px 0', fontWeight: 700, color: colors.clinical.ink, fontSize: 10 }}>Soulagement</th>
+                      <th style={{ textAlign: 'center', padding: '6px 0', fontWeight: 700, color: colors.clinical.ink, fontSize: 10 }}>En attente</th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', fontWeight: 700, color: colors.clinical.ink, fontSize: 10 }}>Efficacite</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stats.treatments.map((t) => {
                       const rate = t.taken > 0 ? Math.round((t.relieved / t.taken) * 100) : 0
+                      const pending = filtered.filter((e) => e.treatment === t.name && !e.efficacy).length
                       return (
-                        <tr key={t.name} style={{ borderTop: `1px solid ${colors.clinical.bg}` }}>
-                          <td style={{ padding: '7px 0', color: colors.text.body }}>{t.name}</td>
+                        <tr key={t.name} style={{ borderBottom: `1px solid ${colors.clinical.bg}` }}>
+                          <td style={{ padding: '8px 0', color: colors.text.body }}>{t.name}</td>
                           <td style={{ textAlign: 'center', color: colors.text.muted }}>{t.taken}</td>
-                          <td style={{ textAlign: 'center', color: t.relieved >= t.taken / 2 ? colors.green.primaryDark : colors.amber.text, fontWeight: 600 }}>
-                            {t.relieved} / {t.taken}
+                          <td style={{ textAlign: 'center', color: colors.text.body, fontWeight: 600 }}>{t.relieved}/{t.taken}</td>
+                          <td style={{ textAlign: 'center', color: pending > 0 ? colors.amber.text : colors.text.faint, fontSize: 10 }}>
+                            {pending > 0 ? `${pending} en attente` : '—'}
                           </td>
-                          <td style={{ textAlign: 'right', fontSize: 11 }}>
-                            <span style={{
-                              padding: '2px 7px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-                              background: rate >= 60 ? '#E7EFE8' : rate >= 30 ? colors.amber.bg : '#FDF0F3',
-                              color: rate >= 60 ? colors.green.primaryDark : rate >= 30 ? colors.amber.text : '#9A3D5E',
-                            }}>{rate}%</span>
-                          </td>
+                          <td style={{ textAlign: 'right' }}><EfficacyTag rate={rate} /></td>
                         </tr>
                       )
                     })}
                   </tbody>
                 </table>
-              </>
+              </Section>
             )}
 
-            {/* --- Note de contexte --- */}
-            <div style={{
-              background: colors.clinical.surfaceSoft, borderRadius: radius.sm,
-              padding: '12px 14px', marginBottom: 18, borderLeft: `3px solid ${colors.clinical.bg}`,
-            }}>
-              <div style={{ fontSize: 11, color: colors.text.muted, lineHeight: 1.6 }}>
-                <strong style={{ color: colors.clinical.ink }}>Note :</strong> Ce rapport est genere automatiquement a partir des donnees saisies par le patient via l'application Pousse. Les donnees sont auto-declaratives et ne constituent pas un diagnostic medical. Elles sont destinees a faciliter le dialogue entre le patient et son professionnel de sante.
-              </div>
-            </div>
-
-            {/* --- Section astronomique (optionnelle) --- */}
+            {/* ============ 7. SECTION ASTRO (optionnelle) ============ */}
             {showAstro && (
               <>
                 <div style={{
-                  borderTop: `1.5px dashed ${colors.clinical.bg}`, paddingTop: 16, marginBottom: 12,
+                  borderTop: `1.5px dashed ${colors.clinical.bg}`, paddingTop: 14, marginBottom: 10,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <i className="ti ti-moon-stars" style={{ fontSize: 17, color: colors.text.soft }} aria-hidden="true" />
+                    <i className="ti ti-moon-stars" style={{ fontSize: 16, color: colors.text.soft }} aria-hidden="true" />
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: colors.clinical.ink }}>Reperes astronomiques</div>
-                      <div style={{ fontSize: 10, color: colors.text.soft }}>Correlations avec tes cycles lunaires et planetaires</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: colors.clinical.ink }}>Annexe — Reperes astronomiques</div>
+                      <div style={{ fontSize: 10, color: colors.text.soft }}>Section informative, sans valeur medicale</div>
                     </div>
                   </div>
                   <button className="no-print" onClick={() => setAstroIncluded((v) => !v)}
@@ -287,14 +424,25 @@ export default function MedicalReport({ bp = 'mobile' }) {
                   </button>
                 </div>
                 <div className={astroIncluded ? '' : 'no-print'}>
-                  <AstroSection episodes={filtered} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
+                  <AstroSection episodes={sorted} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
                 </div>
               </>
             )}
+
+            {/* ============ 8. NOTE MEDICO-LEGALE ============ */}
+            <div style={{
+              background: colors.clinical.surfaceSoft, borderRadius: 8,
+              padding: '14px 16px', marginTop: 14, borderLeft: `3px solid ${colors.clinical.bg}`,
+            }}>
+              <div style={{ fontSize: 10, color: colors.text.muted, lineHeight: 1.7 }}>
+                <strong style={{ color: colors.clinical.ink }}>Avertissement :</strong> Ce rapport est genere automatiquement a partir de donnees auto-declaratives saisies par le patient via l'application Pousse. Il ne constitue pas un diagnostic medical. Les informations presentees sont destinees a faciliter le dialogue entre le patient et son professionnel de sante, et a fournir un historique structure des symptomes rapportes. L'interpretation clinique de ces donnees releve exclusivement du professionnel de sante.
+              </div>
+            </div>
           </>
         )}
 
-        <div className="no-print">
+        {/* ============ BOUTON EXPORT ============ */}
+        <div className="no-print" style={{ marginTop: 20 }}>
           <PrimaryButton icon="ti-download" dark onClick={handleExport}>Exporter en PDF</PrimaryButton>
           <p style={{ textAlign: 'center', fontSize: 11, color: colors.sand.faint, marginTop: 10, marginBottom: 0 }}>
             Donnees personnelles {'\u00b7'} partagees uniquement a ton initiative
@@ -305,14 +453,54 @@ export default function MedicalReport({ bp = 'mobile' }) {
   )
 }
 
-// --- Helpers de calcul ---
+// =====================================================================
+// Helpers de calcul
+// =====================================================================
 
-function distinctConditions(episodes) {
-  return new Set(episodes.map((e) => e.condition)).size
+function fmtDate(d) {
+  const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+  const mois = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+  return `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`
 }
 
-function formatDate(d) {
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+function fmtTime(d) {
+  return `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function fmtShortDate(d) {
+  const mois = ['jan', 'fev', 'mar', 'avr', 'mai', 'jun', 'jul', 'aou', 'sep', 'oct', 'nov', 'dec']
+  return `${d.getDate()} ${mois[d.getMonth()]}`
+}
+
+function groupByDate(episodes) {
+  const jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+  const mois = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+  const map = {}
+  episodes.forEach((ep) => {
+    const d = new Date(ep.createdAt)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (!map[key]) map[key] = {
+      dateStr: key,
+      fullDate: `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`,
+      episodes: [],
+    }
+    map[key].episodes.push(ep)
+  })
+  return Object.values(map).sort((a, b) => a.dateStr.localeCompare(b.dateStr))
+}
+
+function groupByCondition(episodes) {
+  const map = {}
+  episodes.forEach((ep) => {
+    const key = ep.condition
+    if (!map[key]) map[key] = {
+      key,
+      label: conditions[key]?.label || ep.customLabel || key,
+      episodes: [],
+    }
+    map[key].episodes.push(ep)
+  })
+  return Object.values(map).sort((a, b) => b.episodes.length - a.episodes.length)
 }
 
 function computeIntensityDistribution(episodes) {
@@ -346,14 +534,11 @@ function computeZoneBreakdown(episodes) {
 
 function computeTimeBreakdown(episodes) {
   const slots = Array.from({ length: 24 }, (_, i) => ({ slot: `${i}h`, count: 0 }))
-  episodes.forEach((e) => {
-    const h = new Date(e.createdAt).getHours()
-    slots[h].count++
-  })
+  episodes.forEach((e) => { slots[new Date(e.createdAt).getHours()].count++ })
   return slots
 }
 
-function computeAvgPerDay(episodes, period) {
+function computeAvgPerDay(episodes) {
   if (episodes.length === 0) return '0'
   const days = new Set(episodes.map((e) => {
     const d = new Date(e.createdAt)
@@ -364,19 +549,35 @@ function computeAvgPerDay(episodes, period) {
 }
 
 function computeMaxIntensityDay(episodes) {
-  if (episodes.length === 0) return { value: '—', date: '—' }
-  let maxI = 0, maxDate = ''
+  if (episodes.length === 0) return { value: '—', date: '—', condition: null }
+  let maxI = 0, maxDate = '', maxCond = null
   episodes.forEach((e) => {
     if ((e.intensity || 0) >= maxI) {
       maxI = e.intensity || 0
       const d = new Date(e.createdAt)
       maxDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+      maxCond = conditions[e.condition]?.label || e.condition
     }
   })
-  return { value: String(maxI), date: maxDate }
+  return { value: String(maxI), date: maxDate, condition: maxCond }
 }
 
-// --- Composants UI ---
+function computeEvolution(episodes) {
+  if (episodes.length < 3) return null
+  const half = Math.floor(episodes.length / 2)
+  const firstHalf = episodes.slice(0, half)
+  const secondHalf = episodes.slice(half)
+  const avg1 = firstHalf.reduce((s, e) => s + (e.intensity || 0), 0) / firstHalf.length
+  const avg2 = secondHalf.reduce((s, e) => s + (e.intensity || 0), 0) / secondHalf.length
+  const diff = avg2 - avg1
+  if (Math.abs(diff) < 0.5) return { trend: 'stable', text: `Intensite stable sur la periode (${(Math.round(avg2 * 10) / 10).toString().replace('.', ',')}/10 en moyenne).` }
+  if (diff < 0) return { trend: 'down', text: `Tendance a l'amelioration : intensite moyenne passee de ${(Math.round(avg1 * 10) / 10).toString().replace('.', ',')}/10 a ${(Math.round(avg2 * 10) / 10).toString().replace('.', ',')}/10.` }
+  return { trend: 'up', text: `Tendance a l'aggravation : intensite moyenne passee de ${(Math.round(avg1 * 10) / 10).toString().replace('.', ',')}/10 a ${(Math.round(avg2 * 10) / 10).toString().replace('.', ',')}/10.` }
+}
+
+// =====================================================================
+// Composants UI cliniques
+// =====================================================================
 
 function NavBtn({ icon, onClick, label, disabled }) {
   return (
@@ -392,10 +593,25 @@ function NavBtn({ icon, onClick, label, disabled }) {
   )
 }
 
-function SectionTitle({ children, icon }) {
+function Section({ title, icon, children }) {
   return (
-    <div style={{ fontSize: 13, fontWeight: 600, color: colors.clinical.ink, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-      {icon && <i className={`ti ${icon}`} style={{ fontSize: 15, color: colors.text.soft }} aria-hidden="true" />}
+    <div style={{ marginBottom: 22 }}>
+      <div style={{
+        fontSize: 14, fontWeight: 700, color: colors.clinical.ink,
+        borderBottom: `1.5px solid ${colors.clinical.bg}`, paddingBottom: 8, marginBottom: 12,
+        display: 'flex', alignItems: 'center', gap: 7,
+      }}>
+        {icon && <i className={`ti ${icon}`} style={{ fontSize: 16, color: colors.text.soft }} aria-hidden="true" />}
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function SubTitle({ children }) {
+  return (
+    <div style={{ fontSize: 11, fontWeight: 600, color: colors.text.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
       {children}
     </div>
   )
@@ -403,8 +619,8 @@ function SectionTitle({ children, icon }) {
 
 function KeyStat({ value, suffix, label }) {
   return (
-    <div className="anim-fadeInUp" style={{ flex: 1, minWidth: 70, background: colors.clinical.surfaceSoft, borderRadius: radius.sm, padding: '11px 10px', textAlign: 'center' }}>
-      <div style={{ fontSize: 20, fontWeight: 600, color: colors.clinical.ink }}>
+    <div style={{ background: colors.clinical.surfaceSoft, borderRadius: 8, padding: '10px 8px', textAlign: 'center' }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: colors.clinical.ink }}>
         <AnimatedNumber value={value} />{suffix && value !== '\u2014' && <span style={{ fontSize: 11, color: colors.sand.faint }}>{suffix}</span>}
       </div>
       <div style={{ fontSize: 9, color: colors.text.soft, lineHeight: 1.3 }}>{label}</div>
@@ -412,196 +628,79 @@ function KeyStat({ value, suffix, label }) {
   )
 }
 
-function TriggerBar({ label, pct, count, total, last }) {
-  const pctOfTotal = total > 0 ? Math.round((count / total) * 100) : 0
+function MiniStat({ label, value, suffix }) {
   return (
-    <div className="anim-fadeInUp" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: last ? 0 : 8 }}>
-      <span style={{ fontSize: 12, color: colors.text.muted, width: 90, flexShrink: 0 }}>{label}</span>
-      <span style={{ flex: 1, height: 8, background: colors.clinical.bg, borderRadius: 5, overflow: 'hidden' }}>
-        <span className="anim-barFillX" style={{ display: 'block', width: `${pct}%`, height: '100%', background: colors.green.primary, borderRadius: 5 }} />
-      </span>
-      <span style={{ fontSize: 11, color: colors.text.soft, width: 60, textAlign: 'right' }}>{count} ({pctOfTotal}%)</span>
-    </div>
-  )
-}
-
-const DOT_COLOR = (v) => v <= 3 ? colors.green.leaf : v <= 6 ? colors.amber.bar : v <= 8 ? colors.coral.barStrong : '#C45050'
-
-function CalendarLegend() {
-  const items = [
-    { color: colors.green.leaf, label: 'Faible (1-3)' },
-    { color: colors.amber.bar, label: 'Modere (4-6)' },
-    { color: colors.coral.barStrong, label: 'Fort (7-8)' },
-    { color: '#C45050', label: 'Severe (9-10)' },
-  ]
-  return (
-    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 18, paddingLeft: 2 }}>
-      {items.map((it) => (
-        <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: it.color, flexShrink: 0 }} />
-          <span style={{ fontSize: 10, color: colors.text.soft }}>{it.label}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const MOON_ICON_TINY = (phase) => {
-  if (phase < 0.0625) return { icon: 'ti-circle', opacity: 0.3 }
-  if (phase < 0.1875) return { icon: 'ti-moon', opacity: 0.35 }
-  if (phase < 0.3125) return { icon: 'ti-circle-half-vertical', opacity: 0.4 }
-  if (phase < 0.4375) return { icon: 'ti-moon-filled', opacity: 0.45 }
-  if (phase < 0.5625) return { icon: 'ti-circle-filled', opacity: 0.55 }
-  if (phase < 0.6875) return { icon: 'ti-moon-filled', opacity: 0.45 }
-  if (phase < 0.8125) return { icon: 'ti-circle-half-vertical', opacity: 0.4 }
-  if (phase < 0.9375) return { icon: 'ti-moon', opacity: 0.35 }
-  return { icon: 'ti-circle', opacity: 0.3 }
-}
-
-function CalendarGrid({ episodes, year, month, showMoon }) {
-  const { weeks, monthLabel } = buildCalendarGrid(episodes, year, month)
-  const dayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <SectionTitle icon="ti-calendar">Calendrier — {monthLabel}</SectionTitle>
-      <div style={{ border: `1px solid ${colors.clinical.bg}`, borderRadius: radius.sm, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {dayHeaders.map((d, i) => (
-            <div key={i} style={{
-              textAlign: 'center', fontSize: 10, fontWeight: 600,
-              color: colors.text.soft, padding: '6px 0',
-              background: colors.clinical.surfaceSoft,
-              borderBottom: `1px solid ${colors.clinical.bg}`,
-            }}>{d}</div>
-          ))}
-          {weeks.flat().map((cell, i) => {
-            const moonIcon = (showMoon && cell.inMonth)
-              ? MOON_ICON_TINY(getMoonPhase(new Date(year, month, cell.day)))
-              : null
-            return (
-              <div key={i} style={{
-                minHeight: showMoon ? 42 : 36, padding: '3px 2px', textAlign: 'center',
-                borderBottom: `1px solid ${colors.clinical.bg}`,
-                borderRight: (i + 1) % 7 !== 0 ? `1px solid ${colors.clinical.bg}` : 'none',
-                background: cell.isToday ? colors.clinical.surfaceSoft : 'transparent',
-              }}>
-                {cell.inMonth && (
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                      <span style={{ fontSize: 10, color: cell.isToday ? colors.clinical.ink : colors.text.muted, fontWeight: cell.isToday ? 700 : 400 }}>
-                        {cell.day}
-                      </span>
-                      {moonIcon && (
-                        <i className={`ti ${moonIcon.icon}`}
-                          style={{ fontSize: 8, color: '#9A8F80', opacity: moonIcon.opacity }}
-                          aria-hidden="true" />
-                      )}
-                    </div>
-                    {cell.episodes.length > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2, flexWrap: 'wrap' }}>
-                        {cell.episodes.map((ep, j) => (
-                          <span key={j}
-                            title={`${ep.hour} — ${conditions[ep.condition]?.label || ep.condition} (${ep.intensity}/10)`}
-                            style={{
-                              width: 6, height: 6, borderRadius: '50%',
-                              background: DOT_COLOR(ep.intensity || 0),
-                            }} />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )
-          })}
-        </div>
+    <div style={{ background: colors.clinical.surfaceSoft, borderRadius: 6, padding: '6px 8px', textAlign: 'center' }}>
+      <div style={{ fontSize: 9, color: colors.text.soft, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: colors.clinical.ink }}>
+        {value}{suffix && <span style={{ fontSize: 10, fontWeight: 400, color: colors.sand.faint }}>{suffix}</span>}
       </div>
     </div>
   )
 }
 
-const ZODIAC_FULL = [
-  'Belier', 'Taureau', 'Gemeaux', 'Cancer', 'Lion', 'Vierge',
-  'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons',
-]
-const ZODIAC_SHORT = ['Bel', 'Tau', 'Gem', 'Can', 'Lio', 'Vie', 'Bal', 'Sco', 'Sag', 'Cap', 'Ver', 'Poi']
-function zodiacShort(angle) {
-  return ZODIAC_SHORT[Math.floor(((angle % 360) + 360) % 360 / 30)]
+function IntensityBadge({ value }) {
+  const bg = value <= 3 ? '#E7EFE8' : value <= 6 ? colors.amber.bg : '#FDF0F3'
+  const color = value <= 3 ? colors.green.primaryDark : value <= 6 ? colors.amber.text : '#9A3D5E'
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+      background: bg, color,
+    }}>{value}/10</span>
+  )
 }
 
-const REPORT_PLANET_LABELS = { mercure: 'Me', venus: 'Ve', mars: 'Ma', jupiter: 'Ju', saturne: 'Sa' }
-
-function EpisodeDetailList({ episodes, showMoon, showPlanets }) {
-  const sorted = [...episodes].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-  const hasAstro = showMoon || showPlanets
+function EfficacyTag({ rate }) {
+  const bg = rate >= 60 ? '#E7EFE8' : rate >= 30 ? colors.amber.bg : '#FDF0F3'
+  const color = rate >= 60 ? colors.green.primaryDark : rate >= 30 ? colors.amber.text : '#9A3D5E'
   return (
-    <div style={{ marginBottom: 18 }}>
-      <SectionTitle icon="ti-list">Detail des episodes</SectionTitle>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ color: colors.sand.faint, fontSize: 10 }}>
-              <th style={{ textAlign: 'left', paddingBottom: 6, fontWeight: 600 }}>Date</th>
-              <th style={{ textAlign: 'left', paddingBottom: 6, fontWeight: 600 }}>Heure</th>
-              <th style={{ textAlign: 'left', paddingBottom: 6, fontWeight: 600 }}>Pathologie</th>
-              <th style={{ textAlign: 'left', paddingBottom: 6, fontWeight: 600 }}>Zones</th>
-              <th style={{ textAlign: 'center', paddingBottom: 6, fontWeight: 600 }}>Intensite</th>
-              <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Duree</th>
-              <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Traitement</th>
-              {hasAstro && <th style={{ textAlign: 'right', paddingBottom: 6, fontWeight: 600 }}>Reperes astro.</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((ep) => {
-              const d = new Date(ep.createdAt)
-              const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
-              const zonesStr = (ep.zones || []).map((z) => zoneLabels[z] || z).join(', ') || '—'
+    <span style={{
+      padding: '2px 7px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+      background: bg, color,
+    }}>{rate}%</span>
+  )
+}
 
-              let astroCell = null
-              if (hasAstro) {
-                const parts = []
-                if (showMoon) {
-                  const moonInfo = getMoonPhaseName(d)
-                  parts.push(moonInfo.label.split(' ').slice(-1)[0])
-                }
-                if (showPlanets) {
-                  const planets = getPlanetPositions(d).filter((p) => p.id !== 'terre')
-                  const pStr = planets.map((p) => `${REPORT_PLANET_LABELS[p.id]}${zodiacShort(p.angle)}`).join(' ')
-                  parts.push(pStr)
-                }
-                astroCell = parts.join(' · ')
-              }
+function CycleCorrelation({ episodes, profile }) {
+  const phases = {}
+  episodes.forEach((ep) => {
+    const d = new Date(ep.createdAt)
+    // Simulate phase at that date
+    const tempProfile = { ...profile, lastPeriod: profile.lastPeriod, pillPackStart: profile.pillPackStart }
+    const phase = getCyclePhase(tempProfile)
+    if (!phase) return
+    const key = phase.label
+    if (!phases[key]) phases[key] = { label: key, count: 0, totalIntensity: 0 }
+    phases[key].count++
+    phases[key].totalIntensity += (ep.intensity || 0)
+  })
+  const phaseList = Object.values(phases).sort((a, b) => b.count - a.count)
+  if (phaseList.length === 0) return <div style={{ fontSize: 11, color: colors.text.faint, marginBottom: 14 }}>Donnees insuffisantes pour correler.</div>
 
-              return (
-                <tr key={ep.id} style={{ borderTop: `1px solid ${colors.clinical.bg}` }}>
-                  <td style={{ padding: '6px 0', color: colors.text.body }}>{dateStr}</td>
-                  <td style={{ color: colors.text.muted }}>{formatHour(ep.createdAt)}</td>
-                  <td style={{ color: colors.text.body }}>{conditions[ep.condition]?.label || ep.condition}</td>
-                  <td style={{ color: colors.text.soft, fontSize: 10 }}>{zonesStr}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
-                      background: (ep.intensity || 0) <= 3 ? '#E7EFE8' : (ep.intensity || 0) <= 6 ? colors.amber.bg : '#FDF0F3',
-                      color: (ep.intensity || 0) <= 3 ? colors.green.primaryDark : (ep.intensity || 0) <= 6 ? colors.amber.text : '#9A3D5E',
-                    }}>{ep.intensity || 0}/10</span>
-                  </td>
-                  <td style={{ textAlign: 'right', color: colors.text.soft }}>{ep.duration || '—'}</td>
-                  <td style={{ textAlign: 'right', color: colors.text.muted, fontSize: 10 }}>{ep.treatment && ep.treatment !== 'Aucun' ? ep.treatment : '—'}</td>
-                  {hasAstro && (
-                    <td style={{ textAlign: 'right', fontSize: 9, color: '#9A8F80', maxWidth: 90 }}>{astroCell}</td>
-                  )}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {phaseList.map((p) => {
+        const avg = Math.round((p.totalIntensity / p.count) * 10) / 10
+        const pct = Math.round((p.count / episodes.length) * 100)
+        return (
+          <div key={p.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, fontSize: 11 }}>
+            <span style={{ width: 90, color: colors.text.muted, flexShrink: 0 }}>{p.label}</span>
+            <span style={{ flex: 1, height: 7, background: colors.clinical.bg, borderRadius: 4, overflow: 'hidden' }}>
+              <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: colors.green.primary, borderRadius: 4 }} />
+            </span>
+            <span style={{ fontSize: 10, color: colors.text.soft, width: 85, textAlign: 'right' }}>
+              {p.count}x · moy {String(avg).replace('.', ',')}/10
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-// --- Corrélations astronomiques ---
+// =====================================================================
+// Section astronomique (optionnelle, sans valeur médicale)
+// =====================================================================
 
 const MOON_PHASES = [
   { key: 'nouvelle', label: 'Nouvelle lune', min: 0, max: 0.125, icon: 'ti-circle', color: '#5A6B5E' },
@@ -621,98 +720,72 @@ function getMoonPhaseIndex(phase) {
   return 0
 }
 
-function computeMoonCorrelation(episodes) {
-  const buckets = MOON_PHASES.map((p) => ({ ...p, count: 0, totalIntensity: 0, episodes: [] }))
+const PLANET_LABELS = { mercure: 'Mercure', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturne: 'Saturne' }
+const ZODIAC = ['Belier', 'Taureau', 'Gemeaux', 'Cancer', 'Lion', 'Vierge', 'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons']
+function zodiacSign(angle) { return ZODIAC[Math.floor(((angle % 360) + 360) % 360 / 30)] }
 
-  episodes.forEach((ep) => {
-    const d = new Date(ep.createdAt)
-    const phase = getMoonPhase(d)
-    const idx = getMoonPhaseIndex(phase)
-    buckets[idx].count++
-    buckets[idx].totalIntensity += (ep.intensity || 0)
-    buckets[idx].episodes.push(ep)
-  })
+function AstroSection({ episodes, showMoon, showPlanets }) {
+  // Avertissement
+  const warning = (
+    <div style={{
+      background: '#FFF8EE', borderRadius: 8, padding: '10px 14px', marginBottom: 14,
+      border: `1.5px solid ${colors.amber.border}`,
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+    }}>
+      <i className="ti ti-alert-triangle" style={{ color: colors.amber.text, fontSize: 16, marginTop: 1, flexShrink: 0 }} aria-hidden="true" />
+      <div style={{ fontSize: 10, color: colors.amber.text, lineHeight: 1.6 }}>
+        <b>Section informative — sans valeur medicale.</b> Les correlations presentees sont des observations purement statistiques. Elles ne constituent pas une analyse medicale.
+      </div>
+    </div>
+  )
 
-  const total = episodes.length || 1
-  buckets.forEach((b) => {
-    b.pct = Math.round((b.count / total) * 100)
-    b.avgIntensity = b.count > 0 ? Math.round((b.totalIntensity / b.count) * 10) / 10 : 0
-  })
-
-  // Insights
-  const insights = []
-  const maxBucket = buckets.reduce((a, b) => b.count > a.count ? b : a, buckets[0])
-  const minBucket = buckets.filter((b) => b.count > 0).reduce((a, b) => b.count < a.count ? b : a, maxBucket)
-  const maxIntBucket = buckets.filter((b) => b.count >= 2).reduce((a, b) => b.avgIntensity > a.avgIntensity ? b : a, buckets[0])
-
-  if (maxBucket.count > 0 && maxBucket.pct >= 20) {
-    insights.push(`${maxBucket.pct}% de tes episodes surviennent en phase de ${maxBucket.label.toLowerCase()} (${maxBucket.count}/${total}).`)
-  }
-  if (maxIntBucket.count >= 2 && maxIntBucket.avgIntensity > 0) {
-    insights.push(`L'intensite moyenne est la plus elevee en ${maxIntBucket.label.toLowerCase()} : ${String(maxIntBucket.avgIntensity).replace('.', ',')}/10.`)
-  }
-  if (maxBucket.key !== minBucket.key && minBucket.count > 0 && maxBucket.count >= minBucket.count * 2) {
-    insights.push(`Les episodes sont ${Math.round(maxBucket.count / Math.max(1, minBucket.count))}x plus frequents en ${maxBucket.label.toLowerCase()} qu'en ${minBucket.label.toLowerCase()}.`)
-  }
-
-  return { buckets, insights }
-}
-
-const PLANET_LABELS = {
-  mercure: 'Mercure', venus: 'Venus', mars: 'Mars',
-  jupiter: 'Jupiter', saturne: 'Saturne',
-}
-
-// Signe zodiacal simplifie (30 degres chacun, ecliptique)
-const ZODIAC = [
-  'Belier', 'Taureau', 'Gemeaux', 'Cancer', 'Lion', 'Vierge',
-  'Balance', 'Scorpion', 'Sagittaire', 'Capricorne', 'Verseau', 'Poissons',
-]
-function zodiacSign(angle) {
-  return ZODIAC[Math.floor(((angle % 360) + 360) % 360 / 30)]
-}
-
-function computePlanetaryCorrelation(episodes) {
-  if (episodes.length === 0) return { planetPhases: [], insights: [] }
-
-  // For each episode, compute planet positions
-  const epData = episodes.map((ep) => {
-    const d = new Date(ep.createdAt)
-    const planets = getPlanetPositions(d)
-    return { ep, planets, intensity: ep.intensity || 0 }
-  })
-
-  // For each planet (excluding earth), find the zodiac sign distribution during episodes
-  const planetIds = ['mercure', 'venus', 'mars', 'jupiter', 'saturne']
-  const planetPhases = planetIds.map((pid) => {
-    const signCounts = {}
-    const signIntensity = {}
-    epData.forEach(({ planets, intensity }) => {
-      const p = planets.find((pp) => pp.id === pid)
-      if (!p) return
-      const sign = zodiacSign(p.angle)
-      signCounts[sign] = (signCounts[sign] || 0) + 1
-      signIntensity[sign] = (signIntensity[sign] || 0) + intensity
+  // Moon correlation
+  let moonSection = null
+  if (showMoon && episodes.length > 0) {
+    const buckets = MOON_PHASES.map((p) => ({ ...p, count: 0, totalIntensity: 0 }))
+    episodes.forEach((ep) => {
+      const idx = getMoonPhaseIndex(getMoonPhase(new Date(ep.createdAt)))
+      buckets[idx].count++
+      buckets[idx].totalIntensity += (ep.intensity || 0)
     })
-    const signs = Object.entries(signCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([sign, count]) => ({
-        sign, count,
-        pct: Math.round((count / episodes.length) * 100),
-        avgIntensity: Math.round((signIntensity[sign] / count) * 10) / 10,
-      }))
-    return { id: pid, label: PLANET_LABELS[pid], signs }
-  })
+    buckets.forEach((b) => { b.avgIntensity = b.count > 0 ? Math.round((b.totalIntensity / b.count) * 10) / 10 : 0 })
+    const maxC = Math.max(1, ...buckets.map((b) => b.count))
 
-  // High intensity episodes (>= 7)
-  const highEps = epData.filter((e) => e.intensity >= 7)
-  const insights = []
+    moonSection = (
+      <div style={{ marginBottom: 14 }}>
+        <SubTitle>Repartition lunaire</SubTitle>
+        <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 44, marginBottom: 4 }}>
+          {buckets.map((b, i) => (
+            <div key={b.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{
+                width: '100%', maxWidth: 28, borderRadius: 3,
+                height: b.count > 0 ? Math.max(4, (b.count / maxC) * 38) : 0,
+                background: b.key === 'pleine' ? '#C4B17C' : b.key === 'nouvelle' ? '#5A6B5E' : colors.green.leaf,
+                opacity: b.count > 0 ? 0.85 : 0.2,
+              }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+          {buckets.map((b) => (
+            <div key={b.key} style={{ flex: 1, textAlign: 'center' }}>
+              <i className={`ti ${b.icon}`} style={{ fontSize: 10, color: b.color }} aria-hidden="true" />
+              <div style={{ fontSize: 8, color: colors.text.faint }}>{b.count || ''}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-  if (highEps.length >= 2) {
-    // Find dominant sign for each planet during high-intensity episodes
-    planetIds.forEach((pid) => {
+  // Planet correlation
+  let planetSection = null
+  if (showPlanets && episodes.length > 0) {
+    const planetIds = ['mercure', 'venus', 'mars', 'jupiter', 'saturne']
+    const results = planetIds.map((pid) => {
       const signCounts = {}
-      highEps.forEach(({ planets }) => {
+      episodes.forEach((ep) => {
+        const planets = getPlanetPositions(new Date(ep.createdAt))
         const p = planets.find((pp) => pp.id === pid)
         if (p) {
           const sign = zodiacSign(p.angle)
@@ -720,162 +793,32 @@ function computePlanetaryCorrelation(episodes) {
         }
       })
       const top = Object.entries(signCounts).sort((a, b) => b[1] - a[1])[0]
-      if (top && top[1] >= 2) {
-        const pct = Math.round((top[1] / highEps.length) * 100)
-        if (pct >= 40) {
-          insights.push(`${pct}% de tes episodes intenses (>= 7/10) surviennent avec ${PLANET_LABELS[pid]} en ${top[0]}.`)
-        }
-      }
-    })
+      return { id: pid, label: PLANET_LABELS[pid], topSign: top ? top[0] : '—', topCount: top ? top[1] : 0, pct: top ? Math.round((top[1] / episodes.length) * 100) : 0 }
+    }).filter((r) => r.pct >= 15)
+
+    if (results.length > 0) {
+      planetSection = (
+        <div style={{ marginBottom: 14 }}>
+          <SubTitle>Positions planetaires dominantes</SubTitle>
+          {results.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 11 }}>
+              <span style={{ width: 70, color: colors.text.muted, flexShrink: 0 }}>{r.label}</span>
+              <span style={{ flex: 1, height: 6, background: colors.clinical.bg, borderRadius: 3, overflow: 'hidden' }}>
+                <span style={{ display: 'block', width: `${r.pct}%`, height: '100%', background: colors.green.primary, borderRadius: 3, opacity: 0.6 }} />
+              </span>
+              <span style={{ fontSize: 10, color: colors.text.soft, width: 80, textAlign: 'right' }}>{r.topSign} ({r.pct}%)</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
   }
 
-  // Current positions for context
-  const currentPositions = getPlanetPositions(new Date())
-    .filter((p) => p.id !== 'terre')
-    .map((p) => ({ ...p, sign: zodiacSign(p.angle) }))
-
-  return { planetPhases, insights, currentPositions }
-}
-
-function AstroSection({ episodes, showMoon, showPlanets }) {
-  const moonData = showMoon ? computeMoonCorrelation(episodes) : null
-  const planetData = showPlanets ? computePlanetaryCorrelation(episodes) : null
-  const maxMoonCount = moonData ? Math.max(1, ...moonData.buckets.map((b) => b.count)) : 1
-  const allInsights = [
-    ...(moonData ? moonData.insights : []),
-    ...(planetData ? planetData.insights : []),
-  ]
-
   return (
-    <div style={{ marginTop: 10 }}>
-      {/* Avertissement */}
-      <div style={{
-        background: '#FFF8EE', borderRadius: radius.sm,
-        padding: '10px 14px', marginBottom: 14,
-        border: `1.5px solid ${colors.amber.border}`,
-        display: 'flex', alignItems: 'flex-start', gap: 8,
-      }}>
-        <i className="ti ti-alert-triangle" style={{ color: colors.amber.text, fontSize: 16, marginTop: 1, flexShrink: 0 }} aria-hidden="true" />
-        <div style={{ fontSize: 11, color: colors.amber.text, lineHeight: 1.55 }}>
-          <strong>Section informative — sans valeur medicale.</strong> Les correlations presentees ci-dessous sont des observations purement statistiques basees sur les reperes astronomiques choisis par l'utilisateur. Elles ne constituent en aucun cas une analyse medicale et ne doivent pas etre utilisees pour orienter un diagnostic ou un traitement.
-        </div>
-      </div>
-
-      {/* Corrélations lunaires */}
-      {moonData && (
-        <>
-          <SectionTitle icon="ti-moon">Repartition lunaire des episodes</SectionTitle>
-          <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 56, marginBottom: 4 }}>
-            {moonData.buckets.map((b, i) => (
-              <div key={b.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div className="anim-barGrow" style={{
-                  width: '100%', maxWidth: 32, borderRadius: 3,
-                  height: b.count > 0 ? Math.max(5, (b.count / maxMoonCount) * 48) : 0,
-                  background: b.key === 'pleine' ? '#C4B17C' : b.key === 'nouvelle' ? '#5A6B5E' : colors.green.leaf,
-                  opacity: b.count > 0 ? 0.85 : 0.2,
-                  animationDelay: `${i * 0.05}s`,
-                }} />
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
-            {moonData.buckets.map((b) => (
-              <div key={b.key} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: colors.text.faint }}>
-                {b.count > 0 ? b.count : ''}
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 3, marginBottom: 10 }}>
-            {moonData.buckets.map((b) => (
-              <div key={b.key} style={{ flex: 1, textAlign: 'center' }}>
-                <i className={`ti ${b.icon}`} style={{ fontSize: 11, color: b.color }} aria-hidden="true" />
-              </div>
-            ))}
-          </div>
-
-          {/* Intensité moyenne par phase */}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
-            {moonData.buckets.filter((b) => b.count > 0).map((b) => (
-              <div key={b.key} style={{
-                fontSize: 10, padding: '4px 8px', borderRadius: 6,
-                background: colors.clinical.surfaceSoft,
-                border: `1px solid ${colors.clinical.bg}`,
-                color: colors.text.body, display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-                <i className={`ti ${b.icon}`} style={{ fontSize: 10, color: b.color }} aria-hidden="true" />
-                <span style={{ color: colors.text.soft }}>{b.label.split(' ').slice(-1)[0]}</span>
-                <strong style={{ color: colors.clinical.ink }}>{String(b.avgIntensity).replace('.', ',')}</strong>
-                <span style={{ fontSize: 8, color: colors.text.faint }}>/10</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Corrélations planétaires */}
-      {planetData && planetData.planetPhases.length > 0 && (
-        <>
-          <SectionTitle icon="ti-planet">Positions planetaires lors des episodes</SectionTitle>
-
-          {/* Positions actuelles */}
-          <div style={{
-            display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12,
-            background: colors.clinical.surfaceSoft, borderRadius: radius.sm, padding: '10px 12px',
-          }}>
-            <span style={{ fontSize: 10, color: colors.text.soft, width: '100%', marginBottom: 2 }}>Positions actuelles :</span>
-            {planetData.currentPositions.map((p) => (
-              <span key={p.id} style={{
-                fontSize: 10, padding: '3px 7px', borderRadius: 5,
-                background: colors.clinical.bg, color: colors.text.body,
-              }}>
-                {PLANET_LABELS[p.id]} en <strong>{p.sign}</strong>
-              </span>
-            ))}
-          </div>
-
-          {/* Signe dominant par planète */}
-          <div style={{ marginBottom: 16 }}>
-            {planetData.planetPhases.map((pp) => {
-              const top = pp.signs[0]
-              if (!top || top.pct < 15) return null
-              return (
-                <div key={pp.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  marginBottom: 6, fontSize: 11,
-                }}>
-                  <span style={{ width: 70, color: colors.text.muted, flexShrink: 0, fontWeight: 500 }}>{pp.label}</span>
-                  <span style={{ flex: 1, height: 7, background: colors.clinical.bg, borderRadius: 4, overflow: 'hidden' }}>
-                    <span className="anim-barFillX" style={{
-                      display: 'block', width: `${top.pct}%`, height: '100%',
-                      background: colors.green.primary, borderRadius: 4, opacity: 0.7,
-                    }} />
-                  </span>
-                  <span style={{ fontSize: 10, color: colors.text.soft, width: 90, textAlign: 'right' }}>
-                    {top.sign} ({top.pct}%)
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
-
-      {/* Insights auto-générés */}
-      {allInsights.length > 0 && (
-        <div style={{
-          background: colors.clinical.surfaceSoft, borderRadius: radius.sm,
-          padding: '12px 14px', marginBottom: 14,
-          borderLeft: `3px solid ${colors.green.leaf}`,
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: colors.clinical.ink, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <i className="ti ti-sparkles" style={{ fontSize: 14, color: colors.green.leaf }} aria-hidden="true" />
-            Observations
-          </div>
-          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: colors.text.body, lineHeight: 1.7 }}>
-            {allInsights.map((ins, i) => <li key={i}>{ins}</li>)}
-          </ul>
-        </div>
-      )}
+    <div style={{ marginTop: 8 }}>
+      {warning}
+      {moonSection}
+      {planetSection}
     </div>
   )
 }

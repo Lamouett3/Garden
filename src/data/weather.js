@@ -4,23 +4,25 @@
 // météo actuelle. Cache le résultat en localStorage 30 min.
 // =============================================================
 
-const CACHE_KEY = 'pousse.weather.cache'
-const CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+const CACHE_KEY = 'pousse.weather.v2'
+const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
 
 /**
  * WMO Weather interpretation codes → catégorie simplifiée
  * https://open-meteo.com/en/docs
+ * 0 = clear sky, 1 = mainly clear, 2 = partly cloudy, 3 = overcast
  */
 function classifyWeather(code) {
-  if (code === 0) return 'clear'
-  if (code <= 3) return 'cloudy'
-  if (code <= 48) return 'fog'
-  if (code <= 57) return 'drizzle'
-  if (code <= 67) return 'rain'
-  if (code <= 77) return 'snow'
-  if (code <= 82) return 'rain'
-  if (code <= 86) return 'snow'
-  if (code >= 95) return 'storm'
+  if (code <= 1) return 'clear'       // ciel degagé ou essentiellement degagé
+  if (code === 2) return 'clear'      // partiellement nuageux → soleil avec quelques nuages
+  if (code === 3) return 'cloudy'     // couvert
+  if (code <= 48) return 'fog'        // brouillard (45, 48)
+  if (code <= 57) return 'drizzle'    // bruine (51-57)
+  if (code <= 67) return 'rain'       // pluie (61-67)
+  if (code <= 77) return 'snow'       // neige (71-77)
+  if (code <= 82) return 'rain'       // averses (80-82)
+  if (code <= 86) return 'snow'       // averses de neige (85-86)
+  if (code >= 95) return 'storm'      // orage (95-99)
   return 'cloudy'
 }
 
