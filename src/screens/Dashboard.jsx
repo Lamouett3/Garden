@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { colors, radius } from '../theme/tokens'
-import { Screen, ScreenHeader, StreakBadge, Segmented, AnimatedNumber } from '../components/ui'
+import { Screen, ScreenHeader, StreakBadge, Segmented, AnimatedNumber, ConfirmDialog, useToast } from '../components/ui'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { currentStreak } from '../data/storage'
@@ -67,7 +67,9 @@ function LegendDot({ color, children }) {
 
 const INTENSITY_COLOR = (v) => v <= 4 ? colors.green.leaf : v <= 7 ? colors.amber.bar : colors.coral.barStrong
 
-function EpisodeList({ episodes, showMoon, showPlanets }) {
+function EpisodeList({ episodes, showMoon, showPlanets, onEdit, onDelete }) {
+  const [expandedId, setExpandedId] = useState(null)
+
   if (episodes.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '24px 10px' }}>
@@ -84,16 +86,23 @@ function EpisodeList({ episodes, showMoon, showPlanets }) {
         const d = new Date(ep.createdAt)
         const moonInfo = showMoon ? getMoonPhaseName(d) : null
         const planets = showPlanets ? getPlanetPositions(d).filter((p) => p.id !== 'terre') : null
+        const expanded = expandedId === ep.id
         return (
-          <div key={ep.id} className={`anim-fadeInUp anim-d${Math.min(i + 1, 8)}`} style={{
-            background: colors.sand.bg, borderRadius: radius.md, padding: '10px 12px',
-          }}>
+          <div key={ep.id} className={`anim-fadeInUp anim-d${Math.min(i + 1, 8)}`}
+            onClick={() => setExpandedId(expanded ? null : ep.id)}
+            style={{
+              background: expanded ? colors.green.soft : colors.sand.bg,
+              borderRadius: radius.md, padding: '10px 12px', cursor: 'pointer',
+              border: expanded ? `1.5px solid ${colors.green.leafLight}` : '1.5px solid transparent',
+              transition: 'background .2s, border-color .2s',
+            }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.muted, minWidth: 42 }}>{hour}</span>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: INTENSITY_COLOR(ep.intensity || 0), flexShrink: 0 }} />
               <span style={{ fontSize: 13, color: colors.text.body, flex: 1 }}>{condLabel}</span>
               <span style={{ fontSize: 12, color: colors.text.soft }}>{ep.intensity || 0}/10</span>
               {ep.duration && <span style={{ fontSize: 11, color: colors.text.faint }}>{ep.duration}</span>}
+              <i className={`ti ${expanded ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 14, color: colors.text.faint }} aria-hidden="true" />
             </div>
             {(moonInfo || planets) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, marginLeft: 52, flexWrap: 'wrap' }}>
@@ -117,6 +126,48 @@ function EpisodeList({ episodes, showMoon, showPlanets }) {
                     {zodiacAbbr(p.angle)}
                   </span>
                 ))}
+              </div>
+            )}
+            {expanded && (
+              <div className="anim-slideDown" onClick={(e) => e.stopPropagation()} style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.border.soft}` }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: colors.text.muted, marginBottom: 8 }}>
+                  {ep.zones?.length > 0 && (
+                    <span><b>Zones :</b> {ep.zones.join(', ')}</span>
+                  )}
+                  {ep.treatment && ep.treatment !== 'Aucun' && (
+                    <span><b>Traitement :</b> {ep.treatment}{ep.efficacy ? ` (${ep.efficacy})` : ''}</span>
+                  )}
+                  {ep.triggers?.length > 0 && (
+                    <span><b>Declencheurs :</b> {ep.triggers.join(', ')}</span>
+                  )}
+                </div>
+                {ep.extra?.length > 0 && (
+                  <div style={{ fontSize: 12, color: colors.text.soft, marginBottom: 8 }}>
+                    <b>Details :</b> {ep.extra.join(', ')}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  {onEdit && (
+                    <button onClick={() => onEdit(ep.id)}
+                      style={{
+                        border: `1px solid ${colors.border.soft}`, background: colors.green.surface,
+                        color: colors.text.muted, padding: '6px 12px', borderRadius: 8, fontSize: 12,
+                        display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                      }}>
+                      <i className="ti ti-pencil" style={{ fontSize: 13 }} aria-hidden="true" /> Modifier
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button onClick={() => onDelete(ep.id)}
+                      style={{
+                        border: '1px solid #E8C0B8', background: '#FDF5F3',
+                        color: '#A04030', padding: '6px 12px', borderRadius: 8, fontSize: 12,
+                        display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                      }}>
+                      <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" /> Supprimer
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -152,9 +203,11 @@ function NavBtn({ icon, onClick, label, disabled }) {
 }
 
 export default function Dashboard({ onLog, bp = 'mobile' }) {
-  const { episodes, profile } = useStore()
+  const { episodes, profile, removeEpisode } = useStore()
+  const toast = useToast()
   const [view, setView] = useState('s')
   const [offset, setOffset] = useState(0)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const wide = bp === 'desktop'
 
   const real = withoutBienetre(episodes)
@@ -174,18 +227,24 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
     return (
       <Screen bp={bp}>
         <ScreenHeader title="Mon historique" />
-        <div style={{ textAlign: 'center', padding: '30px 10px' }}>
-          <i className="ti ti-seedling" style={{ fontSize: 40, color: colors.green.leaf }} aria-hidden="true" />
-          <p style={{ fontSize: 14, color: colors.text.muted, marginTop: 14, lineHeight: 1.6 }}>
-            Ton historique se remplira a mesure que tu notes tes episodes.
+        <div className="anim-fadeInUp" style={{ textAlign: 'center', padding: '40px 16px' }}>
+          <div className="anim-popIn" style={{ marginBottom: 16 }}>
+            <i className="ti ti-chart-dots-3" style={{ fontSize: 44, color: colors.green.leafLight }} aria-hidden="true" />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: colors.text.title, marginBottom: 8 }}>
+            Ton historique est vide
+          </div>
+          <p style={{ fontSize: 13, color: colors.text.muted, lineHeight: 1.6, maxWidth: 260, margin: '0 auto 20px' }}>
+            Note ton premier episode pour voir apparaitre tes statistiques et tes tendances.
           </p>
           <button onClick={onLog}
             style={{
               border: 'none', background: colors.green.primary, color: '#fff',
-              padding: '12px 20px', borderRadius: radius.lg, fontSize: 14, marginTop: 8,
+              padding: '12px 24px', borderRadius: radius.lg, fontSize: 14,
               display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+              fontFamily: 'inherit',
             }}>
-            <i className="ti ti-plus" aria-hidden="true" /> Noter mon premier episode
+            <i className="ti ti-plus" aria-hidden="true" /> Noter un episode
           </button>
         </div>
       </Screen>
@@ -213,7 +272,7 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
       </div>
 
       {view === 'j' ? (
-        <EpisodeList episodes={dayEpisodes} showMoon={profile.moonOn} showPlanets={profile.planetsOn} />
+        <EpisodeList episodes={dayEpisodes} showMoon={profile.moonOn} showPlanets={profile.planetsOn} onDelete={(id) => setDeleteTarget(id)} />
       ) : (
         <>
           <BarChart bars={series.bars} labels={series.labels} height={wide ? 150 : 96} />
@@ -267,6 +326,19 @@ export default function Dashboard({ onLog, bp = 'mobile' }) {
         </>
       )}
       <div style={{ flex: 1 }} />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Supprimer cet episode ?"
+        message="Cette action est irreversible. L'episode sera definitivement supprime."
+        confirmLabel="Supprimer"
+        onConfirm={() => {
+          removeEpisode(deleteTarget)
+          setDeleteTarget(null)
+          toast('Episode supprime', 'info')
+        }}
+        onCancel={() => setDeleteTarget(null)}
+        danger
+      />
     </Screen>
   )
 }

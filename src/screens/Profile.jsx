@@ -1,9 +1,20 @@
+import { useRef, useState } from 'react'
 import { colors, radius } from '../theme/tokens'
-import { Screen, ScreenHeader, Toggle, Segmented } from '../components/ui'
+import { Screen, ScreenHeader, Toggle, Segmented, useToast, ConfirmDialog } from '../components/ui'
 import { useStore } from '../data/store'
+import { replaceAllEpisodes, saveProfile as persistProfile } from '../data/storage'
+
+function todayISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export default function Profile({ bp = 'mobile', onLogout }) {
-  const { profile, updateProfile } = useStore()
+  const { profile, updateProfile, episodes } = useStore()
+  const toast = useToast()
+  const fileRef = useRef(null)
+  const [confirmImport, setConfirmImport] = useState(false)
+  const [pendingImport, setPendingImport] = useState(null)
 
   const genders = [
     { value: 'f', label: 'Femme' },
@@ -55,31 +66,46 @@ export default function Profile({ bp = 'mobile', onLogout }) {
               {(profile.cycleMode || 'natural') === 'natural' ? (
                 <div style={{ display: 'flex', gap: 10 }}>
                   <MiniField label="Duree cycle">
-                    <input type="number" value={profile.cycleLength}
-                      onChange={(e) => updateProfile({ cycleLength: Number(e.target.value) })}
+                    <input type="number" min={18} max={45} value={profile.cycleLength}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        if (v >= 18 && v <= 45) updateProfile({ cycleLength: v })
+                      }}
                       style={inputStyle} /> j
                   </MiniField>
                   <MiniField label="Dernieres regles">
-                    <input type="date" value={profile.lastPeriod}
-                      onChange={(e) => updateProfile({ lastPeriod: e.target.value })}
+                    <input type="date" value={profile.lastPeriod} max={todayISO()}
+                      onChange={(e) => {
+                        if (e.target.value && e.target.value > todayISO()) return
+                        updateProfile({ lastPeriod: e.target.value })
+                      }}
                       style={{ ...inputStyle, width: '100%' }} />
                   </MiniField>
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <MiniField label="Jours actifs">
-                    <input type="number" value={profile.pillActiveDays || 21}
-                      onChange={(e) => updateProfile({ pillActiveDays: Number(e.target.value) })}
+                    <input type="number" min={1} max={28} value={profile.pillActiveDays || 21}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        if (v >= 1 && v <= 28) updateProfile({ pillActiveDays: v })
+                      }}
                       style={inputStyle} /> j
                   </MiniField>
                   <MiniField label="Jours pause">
-                    <input type="number" value={profile.pillBreakDays || 7}
-                      onChange={(e) => updateProfile({ pillBreakDays: Number(e.target.value) })}
+                    <input type="number" min={0} max={14} value={profile.pillBreakDays || 7}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        if (v >= 0 && v <= 14) updateProfile({ pillBreakDays: v })
+                      }}
                       style={inputStyle} /> j
                   </MiniField>
                   <MiniField label="Debut plaquette">
-                    <input type="date" value={profile.pillPackStart || ''}
-                      onChange={(e) => updateProfile({ pillPackStart: e.target.value })}
+                    <input type="date" value={profile.pillPackStart || ''} max={todayISO()}
+                      onChange={(e) => {
+                        if (e.target.value && e.target.value > todayISO()) return
+                        updateProfile({ pillPackStart: e.target.value })
+                      }}
                       style={{ ...inputStyle, width: '100%' }} />
                   </MiniField>
                 </div>
@@ -140,6 +166,63 @@ export default function Profile({ bp = 'mobile', onLogout }) {
         Desactives par defaut {'\u00b7'} activables quand tu veux
       </p>
 
+      <Label style={{ marginTop: 10 }}>Mes donnees</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button onClick={() => {
+          const data = { version: 1, exportedAt: new Date().toISOString(), episodes, profile }
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `pousse-backup-${todayISO()}.json`
+          a.click()
+          URL.revokeObjectURL(url)
+          toast('Sauvegarde exportee', 'success')
+        }}
+          style={{
+            flex: 1, border: `1.5px solid ${colors.border.soft}`,
+            background: 'transparent', color: colors.text.muted, padding: 11,
+            borderRadius: radius.md, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+          <i className="ti ti-download" aria-hidden="true" /> Exporter
+        </button>
+        <button onClick={() => fileRef.current?.click()}
+          style={{
+            flex: 1, border: `1.5px solid ${colors.border.soft}`,
+            background: 'transparent', color: colors.text.muted, padding: 11,
+            borderRadius: radius.md, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+          <i className="ti ti-upload" aria-hidden="true" /> Importer
+        </button>
+        <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            const reader = new FileReader()
+            reader.onload = (ev) => {
+              try {
+                const data = JSON.parse(ev.target.result)
+                if (!data.episodes || !Array.isArray(data.episodes)) {
+                  toast('Fichier invalide : aucun episode trouve', 'error')
+                  return
+                }
+                setPendingImport(data)
+                setConfirmImport(true)
+              } catch {
+                toast('Fichier invalide', 'error')
+              }
+            }
+            reader.readAsText(file)
+            e.target.value = ''
+          }} />
+      </div>
+      <div style={{ fontSize: 11, color: colors.text.faint, marginBottom: 18, lineHeight: 1.5 }}>
+        <i className="ti ti-shield-check" style={{ fontSize: 12, marginRight: 4 }} aria-hidden="true" />
+        Tes donnees restent sur cet appareil. Exporte-les regulierement pour eviter toute perte.
+      </div>
+
       {onLogout && (
         <button onClick={onLogout}
           style={{
@@ -151,6 +234,29 @@ export default function Profile({ bp = 'mobile', onLogout }) {
           <i className="ti ti-logout" aria-hidden="true" /> Se deconnecter
         </button>
       )}
+
+      <ConfirmDialog
+        open={confirmImport}
+        title="Importer des donnees ?"
+        message={pendingImport ? `Ce fichier contient ${pendingImport.episodes.length} episode${pendingImport.episodes.length > 1 ? 's' : ''}. Tes donnees actuelles seront remplacees.` : ''}
+        confirmLabel="Importer"
+        onConfirm={() => {
+          if (pendingImport) {
+            try {
+              replaceAllEpisodes(pendingImport.episodes)
+              if (pendingImport.profile) persistProfile(pendingImport.profile)
+              toast('Donnees importees. Rechargement...', 'success')
+              setTimeout(() => window.location.reload(), 1000)
+            } catch {
+              toast('Erreur lors de l\'import', 'error')
+            }
+          }
+          setConfirmImport(false)
+          setPendingImport(null)
+        }}
+        onCancel={() => { setConfirmImport(false); setPendingImport(null) }}
+        danger
+      />
     </Screen>
   )
 }

@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { colors, radius } from '../theme/tokens'
-import { Screen, StreakBadge, PrimaryButton, AnimatedNumber } from '../components/ui'
+import { Screen, StreakBadge, PrimaryButton, AnimatedNumber, ConfirmDialog, useToast } from '../components/ui'
 import GrowingGarden from '../components/GrowingGarden'
 import PlanetaryWidget from '../components/PlanetaryWidget'
 import { useStore } from '../data/store'
 import { gardenLoggedDays, currentStreak, dayKey, getCyclePhase } from '../data/storage'
+import { conditions, efficacyLevels } from '../data/conditions'
 
 const CYCLE_COLORS = {
   pink: { bg: '#FDF0F3', text: '#9A3D5E', accent: '#D4537E' },
@@ -15,7 +17,9 @@ const CYCLE_COLORS = {
 const GARDEN_GOAL = 7
 
 export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
-  const { episodes, profile, updateProfile, addEpisode } = useStore()
+  const { episodes, profile, updateProfile, addEpisode, editEpisode } = useStore()
+  const toast = useToast()
+  const [confirmHarvest, setConfirmHarvest] = useState(false)
   const gardenDays = gardenLoggedDays(episodes, profile.gardenStartDate)
   const gardenDayCount = gardenDays.size
   const gardenComplete = gardenDayCount >= GARDEN_GOAL
@@ -33,6 +37,8 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
       completedGardens: (profile.completedGardens || 0) + 1,
       gardenStartDate: today,
     })
+    setConfirmHarvest(false)
+    toast('Recolte terminee ! Un nouveau cycle commence.', 'success')
   }
 
   function handleAllGood() {
@@ -46,6 +52,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
       efficacy: null,
       extra: [],
     })
+    toast('Journee enregistree, continue comme ca !', 'success')
   }
 
   const gardenProgressRaw = gardenDayCount === 0
@@ -89,6 +96,59 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
     <div className="anim-fadeInUp anim-d3" style={{ background: colors.green.soft, borderRadius: radius.md, padding: '13px 14px', display: 'flex', gap: 9, alignItems: 'center' }}>
       <i className="ti ti-check" style={{ color: colors.green.primaryDark, fontSize: 18 }} aria-hidden="true" />
       <span style={{ fontSize: 13, color: colors.green.primaryDark }}>Tu as deja pris soin de toi aujourd'hui.</span>
+    </div>
+  )
+
+  // Efficacy follow-up: find recent episodes (last 48h) with treatment but no efficacy rating
+  const twoDaysAgo = Date.now() - 48 * 60 * 60 * 1000
+  const pendingEfficacy = episodes.filter((e) =>
+    e.treatment && e.treatment !== 'Aucun' && !e.efficacy &&
+    new Date(e.createdAt).getTime() > twoDaysAgo
+  )
+
+  const efficacyCard = pendingEfficacy.length > 0 && (
+    <div className="anim-fadeInUp anim-d4" style={{
+      background: colors.amber.bg, borderRadius: radius.md, padding: '12px 14px',
+      border: `1px solid ${colors.amber.border}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <i className="ti ti-bell" style={{ color: colors.amber.text, fontSize: 16 }} aria-hidden="true" />
+        <span style={{ fontSize: 13, fontWeight: 600, color: colors.amber.text }}>
+          {pendingEfficacy.length === 1 ? 'Traitement en attente' : `${pendingEfficacy.length} traitements en attente`}
+        </span>
+      </div>
+      {pendingEfficacy.slice(0, 2).map((ep) => {
+        const condLabel = conditions[ep.condition]?.label || ep.condition
+        return (
+          <div key={ep.id} style={{
+            background: 'rgba(255,255,255,0.5)', borderRadius: 8, padding: '8px 10px', marginBottom: 6,
+          }}>
+            <div style={{ fontSize: 12, color: colors.amber.text, marginBottom: 6 }}>
+              {condLabel} — {ep.treatment}
+            </div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {efficacyLevels.map((lvl) => (
+                <button key={lvl} onClick={() => {
+                  editEpisode(ep.id, { efficacy: lvl })
+                  toast(`Efficacite notee : ${lvl}`, 'success')
+                }}
+                  style={{
+                    flex: 1, fontSize: 11, padding: '5px 0', borderRadius: 6,
+                    border: `1px solid ${colors.amber.border}`, background: 'rgba(255,255,255,0.7)',
+                    color: colors.amber.text, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  {lvl}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+      {pendingEfficacy.length > 2 && (
+        <div style={{ fontSize: 11, color: colors.amber.text, opacity: 0.7, textAlign: 'center', marginTop: 2 }}>
+          +{pendingEfficacy.length - 2} autre{pendingEfficacy.length - 2 > 1 ? 's' : ''}
+        </div>
+      )}
     </div>
   )
 
@@ -150,7 +210,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           <div style={{ fontSize: 12, color: colors.amber.text, opacity: 0.8, marginBottom: 14 }}>
             {GARDEN_GOAL} jours de suivi, bravo pour ta regularite
           </div>
-          <button onClick={handleHarvest}
+          <button onClick={() => setConfirmHarvest(true)}
             style={{
               border: 'none', background: colors.amber.border, color: '#fff',
               padding: '10px 22px', borderRadius: radius.md, fontSize: 14,
@@ -161,6 +221,15 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmHarvest}
+        title="Recolter ton jardin ?"
+        message="Ton jardin actuel sera recolte et un nouveau cycle de 7 jours commencera. Cette action est irreversible."
+        confirmLabel="Recolter"
+        onConfirm={handleHarvest}
+        onCancel={() => setConfirmHarvest(false)}
+      />
 
       {wide ? (
         <>
@@ -176,6 +245,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {cycleCard}
               {todayCard}
+              {efficacyCard}
               {(profile.moonOn || profile.planetsOn) && <PlanetaryWidget compact showMoon={profile.moonOn} showPlanets={profile.planetsOn} />}
             </div>
           </div>
@@ -195,6 +265,7 @@ export default function Home({ onLog, onSeeHistory, bp = 'mobile' }) {
 
           {cycleCard && <div style={{ marginBottom: 12 }}>{cycleCard}</div>}
           {todayCard && <div style={{ marginBottom: 12 }}>{todayCard}</div>}
+          {efficacyCard && <div style={{ marginBottom: 12 }}>{efficacyCard}</div>}
 
           {(profile.moonOn || profile.planetsOn) && (
             <div style={{ marginBottom: 14 }}>

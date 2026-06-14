@@ -30,6 +30,7 @@ export function saveEpisode(episode) {
     localStorage.setItem(episodesKey(), JSON.stringify(episodes))
   } catch (e) {
     console.error('Échec de sauvegarde', e)
+    throw new Error('storage')
   }
   return withId
 }
@@ -40,12 +41,22 @@ export function updateEpisode(id, patch) {
     localStorage.setItem(episodesKey(), JSON.stringify(episodes))
   } catch (e) {
     console.error('Échec de mise à jour', e)
+    throw new Error('storage')
   }
 }
 
 export function deleteEpisode(id) {
   const episodes = loadEpisodes().filter((e) => e.id !== id)
   localStorage.setItem(episodesKey(), JSON.stringify(episodes))
+}
+
+export function replaceAllEpisodes(episodes) {
+  try {
+    localStorage.setItem(episodesKey(), JSON.stringify(episodes))
+  } catch (e) {
+    console.error('Échec d\'import', e)
+    throw new Error('storage')
+  }
 }
 
 // ---- Profil ----
@@ -85,6 +96,7 @@ export function saveProfile(profile) {
     localStorage.setItem(profileKey(), JSON.stringify(profile))
   } catch (e) {
     console.error('Échec de sauvegarde du profil', e)
+    throw new Error('storage')
   }
 }
 

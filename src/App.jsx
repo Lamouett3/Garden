@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { colors, font } from './theme/tokens'
 import { StoreProvider } from './data/store'
 import { useBreakpoint } from './theme/useBreakpoint'
 import { getSession, logout, migrateIfNeeded, seedTestAccount, currentAccountName } from './data/auth'
+import { ErrorBoundary, ToastProvider, useToast, ConfirmDialog } from './components/ui'
 import Auth from './screens/Auth'
 import Home from './screens/Home'
 import Dashboard from './screens/Dashboard'
@@ -46,6 +47,10 @@ function Screens({ tab, setTab, bp, onLogout }) {
 
 function AppInner({ bp, isDesktop, accountName, onLogout }) {
   const [tab, setTab] = useState('home')
+  const [confirmLogout, setConfirmLogout] = useState(false)
+
+  const handleLogout = useCallback(() => setConfirmLogout(true), [])
+  const doLogout = useCallback(() => { setConfirmLogout(false); onLogout() }, [onLogout])
 
   // ---------- DESKTOP : navigation latérale ----------
   if (isDesktop) {
@@ -95,9 +100,10 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
 
         <main style={{ flex: 1, padding: '40px 32px', overflowY: 'auto' }}>
           <div style={{ maxWidth: 820, margin: '0 auto' }}>
-            <Screens tab={tab} setTab={setTab} bp={bp} onLogout={onLogout} />
+            <Screens tab={tab} setTab={setTab} bp={bp} onLogout={handleLogout} />
           </div>
         </main>
+        <ConfirmDialog open={confirmLogout} title="Se deconnecter ?" message="Tu pourras te reconnecter avec ton nom et mot de passe." confirmLabel="Se deconnecter" onConfirm={doLogout} onCancel={() => setConfirmLogout(false)} danger />
       </div>
     )
   }
@@ -137,8 +143,10 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
         paddingBottom: navH + 18,
         maxWidth: isTablet ? 680 : 460, width: '100%', margin: '0 auto',
       }}>
-        <Screens tab={tab} setTab={setTab} bp={bp} onLogout={onLogout} />
+        <Screens tab={tab} setTab={setTab} bp={bp} onLogout={handleLogout} />
       </div>
+
+      <ConfirmDialog open={confirmLogout} title="Se deconnecter ?" message="Tu pourras te reconnecter avec ton nom et mot de passe." confirmLabel="Se deconnecter" onConfirm={doLogout} onCancel={() => setConfirmLogout(false)} danger />
 
       <nav className="no-print" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -168,6 +176,24 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
   )
 }
 
+function AppWithStore({ session, bp, isDesktop, onLogout }) {
+  const toast = useToast()
+  const onStorageError = useCallback(() => {
+    toast('Espace de stockage insuffisant. Tes donnees n\'ont pas pu etre sauvegardees.', 'error', 5000)
+  }, [toast])
+
+  return (
+    <StoreProvider key={session.accountId} onStorageError={onStorageError}>
+      <AppInner
+        bp={bp}
+        isDesktop={isDesktop}
+        accountName={currentAccountName()}
+        onLogout={onLogout}
+      />
+    </StoreProvider>
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(() => {
     migrateIfNeeded()
@@ -181,13 +207,15 @@ export default function App() {
   }
 
   return (
-    <StoreProvider key={session.accountId}>
-      <AppInner
-        bp={bp}
-        isDesktop={isDesktop}
-        accountName={currentAccountName()}
-        onLogout={() => { logout(); setSession(null) }}
-      />
-    </StoreProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AppWithStore
+          session={session}
+          bp={bp}
+          isDesktop={isDesktop}
+          onLogout={() => { logout(); setSession(null) }}
+        />
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }

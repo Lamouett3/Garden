@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, createContext, useContext, useCallback, Component } from 'react'
 import { colors, radius, font } from '../theme/tokens'
 
 // Conteneur d'écran responsive.
@@ -80,11 +80,11 @@ export function Segmented({ options, value, onChange, variant = 'garden' }) {
   const inactiveColor = isClinical ? colors.text.muted : colors.text.soft
 
   return (
-    <div style={{ display: 'flex', background: trackBg, borderRadius: radius.md, padding: 4, marginBottom: 18 }}>
+    <div role="tablist" style={{ display: 'flex', background: trackBg, borderRadius: radius.md, padding: 4, marginBottom: 18 }}>
       {options.map((opt) => {
         const active = opt.value === value
         return (
-          <button key={opt.value} onClick={() => onChange(opt.value)}
+          <button key={opt.value} role="tab" aria-selected={active} onClick={() => onChange(opt.value)}
             style={{
               flex: 1, fontSize: 12.5, padding: '8px 0', border: 'none',
               background: active ? activeBg : 'transparent',
@@ -108,7 +108,7 @@ export function Chip({ children, active, variant = 'amber', onClick, style }) {
   }
   const p = palettes[variant]
   return (
-    <button onClick={onClick}
+    <button onClick={onClick} aria-pressed={active}
       style={{
         fontSize: 13, padding: '7px 13px', borderRadius: radius.xl, cursor: 'pointer',
         border: `1.5px solid ${active ? p.border : colors.border.soft}`,
@@ -123,15 +123,16 @@ export function Chip({ children, active, variant = 'amber', onClick, style }) {
   )
 }
 
-export function PrimaryButton({ children, icon, onClick, dark }) {
+export function PrimaryButton({ children, icon, onClick, dark, disabled }) {
   return (
-    <button onClick={onClick}
+    <button onClick={disabled ? undefined : onClick} disabled={disabled}
       style={{
         width: '100%', border: 'none',
         background: dark ? colors.clinical.ink : colors.green.primary,
         color: '#fff', padding: 14, borderRadius: radius.lg, fontSize: 14,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-        transition: 'transform .15s ease, box-shadow .2s ease',
+        transition: 'transform .15s ease, box-shadow .2s ease, opacity .2s ease',
+        opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer',
       }}>
       {icon && <i className={`ti ${icon}`} aria-hidden="true" />} {children}
     </button>
@@ -140,7 +141,7 @@ export function PrimaryButton({ children, icon, onClick, dark }) {
 
 export function Toggle({ on }) {
   return (
-    <span style={{ position: 'relative', display: 'inline-block', width: 42, height: 24, flexShrink: 0 }}>
+    <span role="switch" aria-checked={on} style={{ position: 'relative', display: 'inline-block', width: 42, height: 24, flexShrink: 0 }}>
       <span style={{
         position: 'absolute', inset: 0, borderRadius: 20,
         background: on ? colors.green.primary : '#D3D1C7',
@@ -190,4 +191,148 @@ export function AnimatedNumber({ value, duration = 600, suffix = '' }) {
     ? String(Math.round(display))
     : (Math.round(display * 10) / 10).toString().replace('.', ',')
   return <>{formatted}{suffix}</>
+}
+
+// ---- Error Boundary ----
+export class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error, info) {
+    console.error('Pousse — erreur de rendu :', error, info)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#d9e3da', fontFamily: font.family, padding: 24,
+        }}>
+          <div style={{
+            background: colors.green.surface, borderRadius: radius.card, padding: '40px 32px',
+            maxWidth: 380, textAlign: 'center',
+          }}>
+            <i className="ti ti-plant-off" style={{ fontSize: 40, color: colors.text.soft }} aria-hidden="true" />
+            <h2 style={{ fontSize: 18, color: colors.text.title, margin: '16px 0 8px' }}>
+              Oups, quelque chose a plante
+            </h2>
+            <p style={{ fontSize: 13, color: colors.text.muted, lineHeight: 1.6, marginBottom: 20 }}>
+              Une erreur inattendue s'est produite. Tes donnees sont en securite.
+            </p>
+            <button
+              onClick={() => { this.setState({ hasError: false }); window.location.reload() }}
+              style={{
+                border: 'none', background: colors.green.primary, color: '#fff',
+                padding: '12px 24px', borderRadius: radius.lg, fontSize: 14,
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+              }}>
+              <i className="ti ti-refresh" aria-hidden="true" /> Recharger
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+// ---- Toast notification system ----
+const ToastContext = createContext(null)
+
+export function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([])
+
+  const addToast = useCallback((message, type = 'info', duration = 3500) => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration)
+  }, [])
+
+  return (
+    <ToastContext.Provider value={addToast}>
+      {children}
+      <div aria-live="polite" style={{
+        position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', flexDirection: 'column', gap: 8, zIndex: 9999,
+        pointerEvents: 'none', width: '90%', maxWidth: 380,
+      }}>
+        {toasts.map((t) => (
+          <ToastItem key={t.id} toast={t} onDismiss={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} />
+        ))}
+      </div>
+    </ToastContext.Provider>
+  )
+}
+
+const TOAST_STYLES = {
+  success: { bg: colors.green.soft, border: colors.green.leaf, color: colors.green.primaryDark, icon: 'ti-check' },
+  error: { bg: '#FDF0F0', border: '#D06050', color: '#8B2020', icon: 'ti-alert-triangle' },
+  info: { bg: colors.sand.bg, border: colors.sand.faint, color: colors.sand.text, icon: 'ti-info-circle' },
+}
+
+function ToastItem({ toast, onDismiss }) {
+  const s = TOAST_STYLES[toast.type] || TOAST_STYLES.info
+  return (
+    <div className="anim-fadeInUp" style={{
+      background: s.bg, border: `1px solid ${s.border}`, borderRadius: radius.md,
+      padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 9,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.1)', pointerEvents: 'auto',
+    }}>
+      <i className={`ti ${s.icon}`} style={{ fontSize: 16, color: s.color, flexShrink: 0 }} aria-hidden="true" />
+      <span style={{ fontSize: 13, color: s.color, flex: 1, lineHeight: 1.4 }}>{toast.message}</span>
+      <button onClick={onDismiss} aria-label="Fermer" style={{
+        border: 'none', background: 'transparent', padding: 2, color: s.color, opacity: 0.5,
+        fontSize: 14, flexShrink: 0,
+      }}>
+        <i className="ti ti-x" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
+export function useToast() {
+  const ctx = useContext(ToastContext)
+  if (!ctx) return () => {} // graceful fallback
+  return ctx
+}
+
+// ---- Confirmation Dialog ----
+export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmer', cancelLabel = 'Annuler', onConfirm, onCancel, danger }) {
+  if (!open) return null
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.35)', padding: 20,
+    }} onClick={onCancel} role="presentation">
+      <div className="anim-scaleIn" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{
+        background: colors.green.surface, borderRadius: radius.lg, padding: '24px 22px',
+        maxWidth: 340, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: colors.text.title, marginBottom: 8 }}>{title}</div>
+        <p style={{ fontSize: 13, color: colors.text.muted, lineHeight: 1.6, margin: '0 0 20px' }}>{message}</p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel} style={{
+            flex: 1, border: `1.5px solid ${colors.border.soft}`, background: 'transparent',
+            color: colors.text.muted, padding: 11, borderRadius: radius.md, fontSize: 13, fontFamily: 'inherit',
+          }}>
+            {cancelLabel}
+          </button>
+          <button onClick={onConfirm} style={{
+            flex: 1, border: 'none',
+            background: danger ? '#D06050' : colors.green.primary,
+            color: '#fff', padding: 11, borderRadius: radius.md, fontSize: 13,
+            fontWeight: 600, fontFamily: 'inherit',
+          }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }

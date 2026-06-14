@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { conditions, conditionKeys, durations, efficacyLevels, zoneLabels, genderFilteredTriggers } from '../data/conditions'
 import { colors, radius } from '../theme/tokens'
 import BodySilhouette from '../components/BodySilhouette'
-import { Screen, ScreenHeader, Chip, PrimaryButton } from '../components/ui'
+import { Screen, ScreenHeader, Chip, PrimaryButton, useToast } from '../components/ui'
 import { useStore } from '../data/store'
 
 const COND_ICONS = {
@@ -13,6 +13,7 @@ const COND_ICONS = {
 
 export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const { addEpisode, profile } = useStore()
+  const toast = useToast()
   const [condKey, setCondKey] = useState(null)
   const [search, setSearch] = useState('')
   const [zones, setZones] = useState([])
@@ -25,6 +26,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const [extra, setExtra] = useState([])
   const [customLabel, setCustomLabel] = useState('')
   const [customExtra, setCustomExtra] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const cond = condKey ? conditions[condKey] : null
   const wide = bp === 'desktop'
@@ -44,12 +46,18 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
   const hiddenConditions = profile.gender === 'h' ? ['endometriose'] : []
 
   const handleSave = () => {
-    if (!condKey) return
+    if (!condKey || saving) return
+    setSaving(true)
     const episode = { condition: condKey, zones, intensity, duration, triggers, treatment, efficacy, extra }
     if (cond.custom && customLabel) episode.customLabel = customLabel
     if (customExtra.trim()) episode.extra = [...extra, customExtra.trim()]
-    addEpisode(episode)
-    onSaved?.()
+    const saved = addEpisode(episode)
+    if (saved) {
+      toast('Episode enregistre', 'success')
+      setTimeout(() => onSaved?.(), 350)
+    } else {
+      setSaving(false)
+    }
   }
 
   // Filtrage des conditions par recherche
@@ -99,7 +107,7 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
         <span style={{ fontSize: 13, color: colors.text.muted }}>Intensite</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: colors.text.body }}>{intensity}/10</span>
       </div>
-      <input type="range" min={0} max={10} step={1} value={intensity}
+      <input type="range" min={0} max={10} step={1} value={intensity} aria-label="Intensite de l'episode"
         onChange={(e) => setIntensity(Number(e.target.value))} style={{ width: '100%', marginBottom: 18 }} />
 
       <Label>Duree</Label>
@@ -336,7 +344,9 @@ export default function LogEpisode({ onBack, onSaved, bp = 'mobile' }) {
 
           <div style={{ flex: 1 }} />
 
-          <PrimaryButton icon="ti-check" onClick={handleSave}>Enregistrer</PrimaryButton>
+          <PrimaryButton icon={saving ? 'ti-loader-2' : 'ti-check'} onClick={handleSave} disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </PrimaryButton>
           <p style={{ textAlign: 'center', fontSize: 12, color: colors.text.faint, marginTop: 11, marginBottom: 0 }}>
             {"Saisie rapide \u00b7 l'efficacite se note plus tard"}
           </p>
