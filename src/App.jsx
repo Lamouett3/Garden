@@ -216,11 +216,12 @@ function AppInner({ bp, isDesktop, accountName, onLogout }) {
                   flex: 1, maxWidth: 90, border: 'none', background: 'transparent',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                   color: active ? colors.green.primary : colors.text.soft,
-                  fontWeight: active ? 600 : 400, fontSize: 10, padding: '6px 0',
+                  fontWeight: active ? 600 : 400, fontSize: 10, padding: '6px 4px',
+                  borderRadius: 14,
                   fontFamily: 'inherit', position: 'relative',
                 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 12,
+                  width: 36, height: 36, borderRadius: 14,
                   background: active ? colors.green.soft : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'background .2s ease',
